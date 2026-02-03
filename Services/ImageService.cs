@@ -9,6 +9,7 @@ public class ImageService
     private readonly IWebHostEnvironment _environment;
     private const int AlphaThreshold = 10;
     private const double ColorTolerance = 30.0;
+    private const int WhiteThreshold = 240;
 
     public ImageService(IWebHostEnvironment environment)
     {
@@ -27,6 +28,39 @@ public class ImageService
         await file.CopyToAsync(stream);
 
         return $"/uploads/{subFolder}/{fileName}";
+    }
+
+    public async Task<string> GenerateMaskAsync(string baseImageUrl)
+    {
+        var basePath = GetPhysicalPath(baseImageUrl);
+        using var baseImage = Image.Load<Rgba32>(basePath);
+
+        using var maskImage = new Image<Rgba32>(baseImage.Width, baseImage.Height);
+
+        baseImage.ProcessPixelRows(maskImage, (baseAccessor, maskAccessor) =>
+        {
+            for (int y = 0; y < baseAccessor.Height; y++)
+            {
+                var baseRow = baseAccessor.GetRowSpan(y);
+                var maskRow = maskAccessor.GetRowSpan(y);
+
+                for (int x = 0; x < baseRow.Length; x++)
+                {
+                    bool isWorkArea = !IsBackground(baseRow[x]);
+                    maskRow[x] = isWorkArea ? new Rgba32(255, 255, 255, 255) : new Rgba32(0, 0, 0, 255);
+                }
+            }
+        });
+
+        var masksPath = Path.Combine(_environment.WebRootPath, "uploads", "masks");
+        Directory.CreateDirectory(masksPath);
+
+        var maskFileName = $"{Guid.NewGuid()}.png";
+        var maskFilePath = Path.Combine(masksPath, maskFileName);
+
+        await maskImage.SaveAsPngAsync(maskFilePath);
+
+        return $"/uploads/masks/{maskFileName}";
     }
 
     public (int Width, int Height, int TotalPixels) GetImageInfo(string imageUrl)
@@ -51,6 +85,30 @@ public class ImageService
         });
 
         return (image.Width, image.Height, totalPixels);
+    }
+
+    public (int Width, int Height, int TotalPixels) GetImageInfoWithMask(string baseImageUrl)
+    {
+        var basePath = GetPhysicalPath(baseImageUrl);
+        using var baseImage = Image.Load<Rgba32>(basePath);
+
+        int totalPixels = 0;
+        baseImage.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < accessor.Height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                for (int x = 0; x < row.Length; x++)
+                {
+                    if (!IsBackground(row[x]))
+                    {
+                        totalPixels++;
+                    }
+                }
+            }
+        });
+
+        return (baseImage.Width, baseImage.Height, totalPixels);
     }
 
     public async Task<string> ResizeImageAsync(string imageUrl, int targetWidth, int targetHeight)
@@ -116,6 +174,47 @@ public class ImageService
         return Math.Round((decimal)completedPixels / totalPixels * 100, 2);
     }
 
+    public decimal CalculateOverlayProgressWithMask(string maskImageUrl, string overlayImageUrl)
+    {
+        var maskPath = GetPhysicalPath(maskImageUrl);
+        var overlayPath = GetPhysicalPath(overlayImageUrl);
+
+        using var maskImage = Image.Load<Rgba32>(maskPath);
+        using var overlayImage = Image.Load<Rgba32>(overlayPath);
+
+        if (overlayImage.Width != maskImage.Width || overlayImage.Height != maskImage.Height)
+        {
+            overlayImage.Mutate(x => x.Resize(maskImage.Width, maskImage.Height));
+        }
+
+        int totalPixels = 0;
+        int completedPixels = 0;
+
+        maskImage.ProcessPixelRows(overlayImage, (maskAccessor, overlayAccessor) =>
+        {
+            for (int y = 0; y < maskAccessor.Height; y++)
+            {
+                var maskRow = maskAccessor.GetRowSpan(y);
+                var overlayRow = overlayAccessor.GetRowSpan(y);
+
+                for (int x = 0; x < maskRow.Length; x++)
+                {
+                    if (IsWorkAreaInMask(maskRow[x]))
+                    {
+                        totalPixels++;
+                        if (overlayRow[x].A > AlphaThreshold)
+                        {
+                            completedPixels++;
+                        }
+                    }
+                }
+            }
+        });
+
+        if (totalPixels == 0) return 0;
+        return Math.Round((decimal)completedPixels / totalPixels * 100, 2);
+    }
+
     public decimal CalculateDiffProgress(string baseImageUrl, string uploadedImageUrl)
     {
         var basePath = GetPhysicalPath(baseImageUrl);
@@ -156,6 +255,61 @@ public class ImageService
 
         if (totalPixels == 0) return 0;
         return Math.Round((decimal)completedPixels / totalPixels * 100, 2);
+    }
+
+    public decimal CalculateDiffProgressWithMask(string maskImageUrl, string baseImageUrl, string uploadedImageUrl)
+    {
+        var maskPath = GetPhysicalPath(maskImageUrl);
+        var basePath = GetPhysicalPath(baseImageUrl);
+        var uploadedPath = GetPhysicalPath(uploadedImageUrl);
+
+        using var maskImage = Image.Load<Rgba32>(maskPath);
+        using var baseImage = Image.Load<Rgba32>(basePath);
+        using var uploadedImage = Image.Load<Rgba32>(uploadedPath);
+
+        if (uploadedImage.Width != maskImage.Width || uploadedImage.Height != maskImage.Height)
+        {
+            uploadedImage.Mutate(x => x.Resize(maskImage.Width, maskImage.Height));
+        }
+
+        int totalPixels = 0;
+        int completedPixels = 0;
+
+        for (int y = 0; y < maskImage.Height; y++)
+        {
+            for (int x = 0; x < maskImage.Width; x++)
+            {
+                var maskPixel = maskImage[x, y];
+                if (IsWorkAreaInMask(maskPixel))
+                {
+                    totalPixels++;
+                    var basePixel = baseImage[x, y];
+                    var uploadedPixel = uploadedImage[x, y];
+                    double distance = CalculateColorDistance(basePixel, uploadedPixel);
+                    if (distance > ColorTolerance)
+                    {
+                        completedPixels++;
+                    }
+                }
+            }
+        }
+
+        if (totalPixels == 0) return 0;
+        return Math.Round((decimal)completedPixels / totalPixels * 100, 2);
+    }
+
+    private static bool IsBackground(Rgba32 pixel)
+    {
+        if (pixel.A <= AlphaThreshold)
+        {
+            return true;
+        }
+        return pixel.R > WhiteThreshold && pixel.G > WhiteThreshold && pixel.B > WhiteThreshold;
+    }
+
+    private static bool IsWorkAreaInMask(Rgba32 maskPixel)
+    {
+        return maskPixel.R > 128;
     }
 
     private static double CalculateColorDistance(Rgba32 color1, Rgba32 color2)

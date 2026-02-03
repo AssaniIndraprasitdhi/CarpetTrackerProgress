@@ -47,12 +47,26 @@ public class ProgressController : Controller
 
         var imageUrl = await _imageService.SaveImageAsync(overlayImage, "overlays");
 
-        var result = await _progressCalculationService.CalculateProgressAsync(
-            order.BaseImageUrl!,
-            imageUrl,
-            "overlay",
-            order.StandardWidth,
-            order.StandardHeight);
+        ProgressResult result;
+        if (!string.IsNullOrEmpty(order.MaskImageUrl))
+        {
+            result = await _progressCalculationService.CalculateProgressWithMaskAsync(
+                order.MaskImageUrl,
+                order.BaseImageUrl!,
+                imageUrl,
+                "overlay",
+                order.StandardWidth,
+                order.StandardHeight);
+        }
+        else
+        {
+            result = await _progressCalculationService.CalculateProgressAsync(
+                order.BaseImageUrl!,
+                imageUrl,
+                "overlay",
+                order.StandardWidth,
+                order.StandardHeight);
+        }
 
         await _orderService.UpdateProgressAsync(order, result.ImageUrl, result.ProgressPercentage);
 
@@ -87,12 +101,26 @@ public class ProgressController : Controller
 
         var imageUrl = await _imageService.SaveImageAsync(uploadedImage, "uploads");
 
-        var result = await _progressCalculationService.CalculateProgressAsync(
-            order.BaseImageUrl!,
-            imageUrl,
-            "upload_diff",
-            order.StandardWidth,
-            order.StandardHeight);
+        ProgressResult result;
+        if (!string.IsNullOrEmpty(order.MaskImageUrl))
+        {
+            result = await _progressCalculationService.CalculateProgressWithMaskAsync(
+                order.MaskImageUrl,
+                order.BaseImageUrl!,
+                imageUrl,
+                "upload_diff",
+                order.StandardWidth,
+                order.StandardHeight);
+        }
+        else
+        {
+            result = await _progressCalculationService.CalculateProgressAsync(
+                order.BaseImageUrl!,
+                imageUrl,
+                "upload_diff",
+                order.StandardWidth,
+                order.StandardHeight);
+        }
 
         await _orderService.UpdateProgressAsync(order, result.ImageUrl, result.ProgressPercentage);
 

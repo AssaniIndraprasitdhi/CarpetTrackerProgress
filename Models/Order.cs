@@ -18,6 +18,9 @@ public class Order
     [Column("base_image_url")]
     public string? BaseImageUrl { get; set; }
 
+    [Column("mask_image_url")]
+    public string? MaskImageUrl { get; set; }
+
     [Column("standard_width")]
     public int StandardWidth { get; set; }
 

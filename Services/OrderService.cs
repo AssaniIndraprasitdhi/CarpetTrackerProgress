@@ -38,12 +38,14 @@ public class OrderService
     public async Task<Order> CreateOrderAsync(string orderNumber, IFormFile baseImage, string progressMode)
     {
         var imageUrl = await _imageService.SaveImageAsync(baseImage, "base");
-        var (width, height, totalPixels) = _imageService.GetImageInfo(imageUrl);
+        var maskUrl = await _imageService.GenerateMaskAsync(imageUrl);
+        var (width, height, totalPixels) = _imageService.GetImageInfoWithMask(imageUrl);
 
         var order = new Order
         {
             OrderNumber = orderNumber,
             BaseImageUrl = imageUrl,
+            MaskImageUrl = maskUrl,
             StandardWidth = width,
             StandardHeight = height,
             TotalPixels = totalPixels,

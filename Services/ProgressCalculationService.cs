@@ -31,6 +31,30 @@ public class ProgressCalculationService
             ProgressPercentage = progress
         };
     }
+
+    public async Task<ProgressResult> CalculateProgressWithMaskAsync(
+        string maskImageUrl,
+        string baseImageUrl,
+        string inputImageUrl,
+        string mode,
+        int standardWidth,
+        int standardHeight)
+    {
+        var resizedUrl = await _imageService.ResizeImageAsync(inputImageUrl, standardWidth, standardHeight);
+
+        decimal progress = mode switch
+        {
+            "overlay" => _imageService.CalculateOverlayProgressWithMask(maskImageUrl, resizedUrl),
+            "upload_diff" => _imageService.CalculateDiffProgressWithMask(maskImageUrl, baseImageUrl, resizedUrl),
+            _ => throw new ArgumentException($"Invalid mode: {mode}")
+        };
+
+        return new ProgressResult
+        {
+            ImageUrl = resizedUrl,
+            ProgressPercentage = progress
+        };
+    }
 }
 
 public class ProgressResult
