@@ -22,6 +22,31 @@ public class OrderService
             .ToListAsync();
     }
 
+    public async Task<(List<Order> Orders, int TotalCount)> GetOrdersPagedAsync(
+        int page,
+        int pageSize,
+        string? search = null,
+        string? mode = null)
+    {
+        var query = _context.Orders.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(o => o.OrderNumber.ToLower().Contains(search.ToLower()));
+
+        if (!string.IsNullOrWhiteSpace(mode) && mode != "all")
+            query = query.Where(o => o.ProgressMode == mode);
+
+        var totalCount = await query.CountAsync();
+
+        var orders = await query
+            .OrderByDescending(o => o.UpdatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (orders, totalCount);
+    }
+
     public async Task<Order?> GetOrderByIdAsync(int id)
     {
         return await _context.Orders

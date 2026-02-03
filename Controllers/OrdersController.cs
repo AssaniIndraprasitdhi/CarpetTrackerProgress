@@ -1,21 +1,37 @@
 using Microsoft.AspNetCore.Mvc;
 using CarpetProgressTracker.Services;
+using CarpetProgressTracker.Models;
 
 namespace CarpetProgressTracker.Controllers;
 
 public class OrdersController : Controller
 {
     private readonly OrderService _orderService;
+    private static readonly int[] AllowedPageSizes = { 5, 10, 25, 50, 100 };
 
     public OrdersController(OrderService orderService)
     {
         _orderService = orderService;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 10, string? search = null, string? mode = null)
     {
-        var orders = await _orderService.GetAllOrdersAsync();
-        return View(orders);
+        if (page < 1) page = 1;
+        if (!AllowedPageSizes.Contains(pageSize)) pageSize = 10;
+
+        var (orders, totalCount) = await _orderService.GetOrdersPagedAsync(page, pageSize, search, mode);
+
+        var viewModel = new OrdersListViewModel
+        {
+            Orders = orders,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            Search = search,
+            Mode = mode
+        };
+
+        return View(viewModel);
     }
 
     public IActionResult Create()
@@ -69,7 +85,19 @@ public class OrdersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        await _orderService.DeleteOrderAsync(id);
-        return RedirectToAction("Index");
+        try
+        {
+            Console.WriteLine($"Delete order requested: {id}");
+            await _orderService.DeleteOrderAsync(id);
+            Console.WriteLine($"Delete order success: {id}");
+            TempData["Success"] = "Order deleted successfully.";
+            return RedirectToAction("Index");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Delete order error: {ex.Message}");
+            TempData["Error"] = "Failed to delete order.";
+            return RedirectToAction("Details", new { id });
+        }
     }
 }

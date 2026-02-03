@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Draw Progress";
     var hasExistingOverlay = !string.IsNullOrEmpty(Model.CurrentOverlayUrl);
+    var hasMask = !string.IsNullOrEmpty(Model.MaskImageUrl);
 }
 
 <div class="page-header">
@@ -29,23 +30,43 @@
             <div class="card-header card-header-light">
                 <div class="tools-bar">
                     <div class="tool-group">
-                        <span class="tool-label">Brush:</span>
-                        <input type="range" id="brushSize" min="1" max="50" value="10" class="form-range" style="width: 100px;" />
-                        <span id="brushSizeValue" class="fw-bold">10</span>px
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-primary tool-btn active" data-tool="pen" id="btnPen" title="Pen (solid stroke)">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary tool-btn" data-tool="pencil" id="btnPencil" title="Pencil (thin, semi-transparent)">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary tool-btn" data-tool="eraser" id="btnEraser" title="Eraser">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="tool-group tool-group-size">
+                        <span class="tool-label">Size:</span>
+                        <input type="range" id="brushSize" min="1" max="50" value="10" class="form-range" />
+                        <span id="brushSizeValue" class="fw-bold brush-size-value">10</span>px
+                    </div>
+                    <div class="tool-group" id="colorGroup">
+                        <input type="color" id="brushColor" value="#ff0000" class="color-picker" title="Brush Color" />
                     </div>
                     <div class="tool-group">
-                        <span class="tool-label">Color:</span>
-                        <input type="color" id="brushColor" value="#ff0000" style="width: 36px; height: 28px; padding: 0; border: none; cursor: pointer;" />
-                    </div>
-                    <div class="tool-group ms-auto">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnUndo">Undo</button>
-                        <button type="button" class="btn btn-sm btn-outline-danger" id="btnClear">Clear</button>
+                        <button type="button" class="btn btn-outline-secondary icon-btn" id="btnUndo" title="Undo">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger icon-btn" id="btnClear" title="Clear All">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                        </button>
+                        <button type="button" class="btn btn-success icon-btn" id="btnSubmit" title="Save Progress" aria-label="Save Progress">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        </button>
                     </div>
                 </div>
             </div>
             <div class="card-body text-center p-4" style="overflow: auto; background: #f1f5f9;">
                 <div class="canvas-container" id="canvasContainer">
-                    <canvas id="drawingCanvas"></canvas>
+                    <canvas id="drawingCanvas" class="canvas-touch"></canvas>
+                    <canvas id="outlineCanvas" class="canvas-overlay canvas-touch" style="pointer-events: none;"></canvas>
                 </div>
             </div>
         </div>
@@ -86,37 +107,138 @@
 
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">Actions</div>
+            <div class="card-header">Instructions</div>
             <div class="card-body">
-                <p class="text-muted mb-3">Draw on the white canvas to mark completed areas. Use the reference image on the left as a guide.</p>
-                <div class="d-flex gap-2">
-                    <form id="submitForm" asp-action="SubmitDraw" method="post" enctype="multipart/form-data" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="orderId" value="@Model.Id" />
-                        <input type="file" name="overlayImage" id="overlayImageInput" style="display: none;" />
-                        <button type="button" class="btn btn-success btn-lg" id="btnSubmit">Calculate Progress</button>
-                    </form>
-                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-lg">Cancel</a>
-                </div>
+                <ul class="instructions-list mb-0">
+                    <li>Use <strong>Pen</strong> for solid strokes or <strong>Pencil</strong> for light marking</li>
+                    <li>Use <strong>Eraser</strong> to remove mistakes</li>
+                    <li>Drawing is restricted to inside the carpet outline</li>
+                    <li>Click <strong>Save</strong> to calculate and store progress</li>
+                </ul>
             </div>
         </div>
+        <form id="submitForm" asp-action="SubmitDraw" method="post" enctype="multipart/form-data" style="display: none;">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="orderId" value="@Model.Id" />
+            <input type="file" name="overlayImage" id="overlayImageInput" />
+        </form>
     </div>
 </div>
+
+<canvas id="maskCanvas" style="display: none;"></canvas>
 
 @section Scripts {
 <script>
 (function() {
     var canvas = document.getElementById('drawingCanvas');
     var ctx = canvas.getContext('2d');
+    var outlineCanvas = document.getElementById('outlineCanvas');
+    var outlineCtx = outlineCanvas.getContext('2d');
+    var maskCanvas = document.getElementById('maskCanvas');
+    var maskCtx = maskCanvas.getContext('2d');
 
     var width = @Model.StandardWidth;
     var height = @Model.StandardHeight;
 
     canvas.width = width;
     canvas.height = height;
+    outlineCanvas.width = width;
+    outlineCanvas.height = height;
+    maskCanvas.width = width;
+    maskCanvas.height = height;
+
+    var maskData = null;
+    var maskLoaded = false;
 
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
+
+    @if (hasMask)
+    {
+        <text>
+    var maskImg = new Image();
+    maskImg.crossOrigin = 'anonymous';
+    maskImg.onload = function() {
+        maskCtx.drawImage(maskImg, 0, 0, width, height);
+        maskData = maskCtx.getImageData(0, 0, width, height);
+        maskLoaded = true;
+        drawOutline();
+        fillOutsideMask();
+    };
+    maskImg.src = '@Model.MaskImageUrl';
+        </text>
+    }
+
+    function isInWorkArea(x, y) {
+        if (!maskLoaded || !maskData) return true;
+        x = Math.floor(x);
+        y = Math.floor(y);
+        if (x < 0 || x >= width || y < 0 || y >= height) return false;
+        var idx = (y * width + x) * 4;
+        return maskData.data[idx] > 128;
+    }
+
+    function drawOutline() {
+        if (!maskData) return;
+        outlineCtx.clearRect(0, 0, width, height);
+        outlineCtx.strokeStyle = '#1e293b';
+        outlineCtx.lineWidth = 2;
+
+        var outlinePixels = [];
+
+        for (var y = 0; y < height; y++) {
+            for (var x = 0; x < width; x++) {
+                var idx = (y * width + x) * 4;
+                var isWork = maskData.data[idx] > 128;
+                if (!isWork) continue;
+
+                var isEdge = false;
+                if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+                    isEdge = true;
+                } else {
+                    var neighbors = [
+                        (y * width + (x - 1)) * 4,
+                        (y * width + (x + 1)) * 4,
+                        ((y - 1) * width + x) * 4,
+                        ((y + 1) * width + x) * 4
+                    ];
+                    for (var i = 0; i < neighbors.length; i++) {
+                        if (maskData.data[neighbors[i]] <= 128) {
+                            isEdge = true;
+                            break;
+                        }
+                    }
+                }
+                if (isEdge) {
+                    outlinePixels.push({ x: x, y: y });
+                }
+            }
+        }
+
+        outlineCtx.fillStyle = '#1e293b';
+        for (var i = 0; i < outlinePixels.length; i++) {
+            outlineCtx.fillRect(outlinePixels[i].x, outlinePixels[i].y, 1, 1);
+        }
+    }
+
+    function fillOutsideMask() {
+        if (!maskData) return;
+        var imageData = ctx.getImageData(0, 0, width, height);
+        var data = imageData.data;
+
+        for (var y = 0; y < height; y++) {
+            for (var x = 0; x < width; x++) {
+                var idx = (y * width + x) * 4;
+                if (maskData.data[idx] <= 128) {
+                    data[idx] = 240;
+                    data[idx + 1] = 240;
+                    data[idx + 2] = 240;
+                    data[idx + 3] = 255;
+                }
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
 
     @if (hasExistingOverlay)
     {
@@ -125,6 +247,9 @@
     existingOverlay.crossOrigin = 'anonymous';
     existingOverlay.onload = function() {
         ctx.drawImage(existingOverlay, 0, 0, width, height);
+        if (maskLoaded) {
+            fillOutsideMask();
+        }
     };
     existingOverlay.src = '@Model.CurrentOverlayUrl';
         </text>
@@ -134,13 +259,14 @@
     var lastX = 0;
     var lastY = 0;
     var history = [];
+    var currentTool = 'pen';
 
     function saveState() {
         if (history.length > 20) history.shift();
         history.push(canvas.toDataURL());
     }
 
-    saveState();
+    setTimeout(function() { saveState(); }, 500);
 
     function getBrushSize() {
         return parseInt(document.getElementById('brushSize').value);
@@ -150,52 +276,168 @@
         return document.getElementById('brushColor').value;
     }
 
+    function setActiveTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.tool-btn').forEach(function(btn) {
+            if (btn.getAttribute('data-tool') === tool) {
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-primary', 'active');
+            } else {
+                btn.classList.remove('btn-primary', 'active');
+                btn.classList.add('btn-outline-primary');
+            }
+        });
+        var colorGroup = document.getElementById('colorGroup');
+        if (tool === 'eraser') {
+            colorGroup.style.opacity = '0.5';
+            colorGroup.style.pointerEvents = 'none';
+        } else {
+            colorGroup.style.opacity = '1';
+            colorGroup.style.pointerEvents = 'auto';
+        }
+    }
+
+    document.querySelectorAll('.tool-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            setActiveTool(this.getAttribute('data-tool'));
+        });
+    });
+
     document.getElementById('brushSize').addEventListener('input', function() {
         document.getElementById('brushSizeValue').textContent = this.value;
     });
 
-    function getMousePos(e) {
+    function getPointerPos(e) {
         var rect = canvas.getBoundingClientRect();
         var scaleX = canvas.width / rect.width;
         var scaleY = canvas.height / rect.height;
+        var clientX = e.clientX;
+        var clientY = e.clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        }
         return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
         };
     }
 
-    canvas.addEventListener('mousedown', function(e) {
+    function getToolSettings() {
+        var baseSize = getBrushSize();
+        var settings = {
+            size: baseSize,
+            alpha: 1.0,
+            composite: 'source-over'
+        };
+        if (currentTool === 'pencil') {
+            settings.size = Math.max(1, Math.floor(baseSize * 0.5));
+            settings.alpha = 0.4;
+        } else if (currentTool === 'eraser') {
+            settings.composite = 'destination-out';
+        }
+        return settings;
+    }
+
+    function drawPoint(x, y) {
+        var settings = getToolSettings();
+        var halfBrush = settings.size / 2;
+
+        ctx.save();
+        ctx.globalAlpha = settings.alpha;
+        ctx.globalCompositeOperation = settings.composite;
+
+        for (var dy = -halfBrush; dy <= halfBrush; dy++) {
+            for (var dx = -halfBrush; dx <= halfBrush; dx++) {
+                if (dx * dx + dy * dy <= halfBrush * halfBrush) {
+                    var px = Math.floor(x + dx);
+                    var py = Math.floor(y + dy);
+                    if (isInWorkArea(px, py)) {
+                        if (currentTool === 'eraser') {
+                            ctx.fillStyle = 'rgba(0,0,0,1)';
+                        } else {
+                            ctx.fillStyle = getBrushColor();
+                        }
+                        ctx.fillRect(px, py, 1, 1);
+                    }
+                }
+            }
+        }
+
+        ctx.restore();
+    }
+
+    function drawLine(x1, y1, x2, y2) {
+        var dx = x2 - x1;
+        var dy = y2 - y1;
+        var steps = Math.max(Math.abs(dx), Math.abs(dy));
+        if (steps === 0) {
+            drawPoint(x1, y1);
+            return;
+        }
+        var xInc = dx / steps;
+        var yInc = dy / steps;
+        for (var i = 0; i <= steps; i++) {
+            drawPoint(x1 + xInc * i, y1 + yInc * i);
+        }
+    }
+
+    function handlePointerDown(e) {
+        e.preventDefault();
+        var pos = getPointerPos(e);
+        if (!isInWorkArea(pos.x, pos.y)) return;
         saveState();
         isDrawing = true;
-        var pos = getMousePos(e);
         lastX = pos.x;
         lastY = pos.y;
-    });
+        drawPoint(pos.x, pos.y);
+    }
 
-    canvas.addEventListener('mousemove', function(e) {
+    function handlePointerMove(e) {
         if (!isDrawing) return;
-        var pos = getMousePos(e);
-        ctx.beginPath();
-        ctx.strokeStyle = getBrushColor();
-        ctx.lineWidth = getBrushSize();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
+        e.preventDefault();
+        var pos = getPointerPos(e);
+        drawLine(lastX, lastY, pos.x, pos.y);
         lastX = pos.x;
         lastY = pos.y;
-    });
+    }
 
-    canvas.addEventListener('mouseup', function() { isDrawing = false; });
-    canvas.addEventListener('mouseout', function() { isDrawing = false; });
+    function handlePointerUp() {
+        isDrawing = false;
+    }
 
-    document.getElementById('btnClear').addEventListener('click', function() {
-        if (confirm('Clear all drawings? This cannot be undone.')) {
-            saveState();
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, width, height);
-        }
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointerleave', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerUp);
+
+    canvas.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
+    canvas.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+
+    var btnClear = document.getElementById('btnClear');
+    console.log('btnClear element:', btnClear);
+    btnClear.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Clear button clicked');
+        showConfirmModal({
+            title: 'Clear Drawing',
+            message: 'Clear all drawings? This cannot be undone.',
+            type: 'danger',
+            confirmText: 'Clear',
+            cancelText: 'Cancel',
+            onConfirm: function() {
+                console.log('Clear confirmed, clearing canvas');
+                saveState();
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+                if (maskLoaded) {
+                    fillOutsideMask();
+                }
+                console.log('Canvas cleared');
+            }
+        });
     });
 
     document.getElementById('btnUndo').addEventListener('click', function() {
@@ -211,9 +453,40 @@
         }
     });
 
-    document.getElementById('btnSubmit').addEventListener('click', function() {
+    var isSaving = false;
+    var saveBtn = document.getElementById('btnSubmit');
+
+    saveBtn.addEventListener('click', function() {
+        if (isSaving) return;
+        isSaving = true;
+        saveBtn.disabled = true;
+        saveBtn.classList.add('saving');
+        saveBtn.innerHTML = '<svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
         showLoading('Calculating progress...');
-        canvas.toBlob(function(blob) {
+        var exportCanvas = document.createElement('canvas');
+        exportCanvas.width = width;
+        exportCanvas.height = height;
+        var exportCtx = exportCanvas.getContext('2d');
+        exportCtx.fillStyle = '#ffffff';
+        exportCtx.fillRect(0, 0, width, height);
+        exportCtx.drawImage(canvas, 0, 0);
+        if (maskLoaded && maskData) {
+            var imageData = exportCtx.getImageData(0, 0, width, height);
+            var data = imageData.data;
+            for (var y = 0; y < height; y++) {
+                for (var x = 0; x < width; x++) {
+                    var idx = (y * width + x) * 4;
+                    if (maskData.data[idx] <= 128) {
+                        data[idx] = 240;
+                        data[idx + 1] = 240;
+                        data[idx + 2] = 240;
+                        data[idx + 3] = 255;
+                    }
+                }
+            }
+            exportCtx.putImageData(imageData, 0, 0);
+        }
+        exportCanvas.toBlob(function(blob) {
             var file = new File([blob], 'overlay.png', { type: 'image/png' });
             var dataTransfer = new DataTransfer();
             dataTransfer.items.add(file);

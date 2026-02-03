@@ -104,6 +104,8 @@ public class ProgressController : Controller
         var imageUrl = await _imageService.SaveImageAsync(uploadedImage, "uploads", order.StandardWidth, order.StandardHeight);
 
         ProgressResult result;
+        string overlayUrl;
+
         if (!string.IsNullOrEmpty(order.MaskImageUrl))
         {
             result = await _progressCalculationService.CalculateProgressWithMaskAsync(
@@ -111,6 +113,13 @@ public class ProgressController : Controller
                 order.BaseImageUrl!,
                 imageUrl,
                 "upload_diff",
+                order.StandardWidth,
+                order.StandardHeight);
+
+            overlayUrl = await _imageService.GenerateDiffOverlayWithMaskAsync(
+                order.MaskImageUrl,
+                order.BaseImageUrl!,
+                imageUrl,
                 order.StandardWidth,
                 order.StandardHeight);
         }
@@ -122,9 +131,15 @@ public class ProgressController : Controller
                 "upload_diff",
                 order.StandardWidth,
                 order.StandardHeight);
+
+            overlayUrl = await _imageService.GenerateDiffOverlayAsync(
+                order.BaseImageUrl!,
+                imageUrl,
+                order.StandardWidth,
+                order.StandardHeight);
         }
 
-        await _orderService.UpdateProgressAsync(order, result.ImageUrl, result.ProgressPercentage);
+        await _orderService.UpdateProgressAsync(order, result.ImageUrl, result.ProgressPercentage, overlayUrl);
 
         return RedirectToAction("Result", new { orderId, progress = result.ProgressPercentage });
     }

@@ -362,6 +362,127 @@ public class ImageService
         return Math.Round((decimal)completedPixels / totalPixels * 100, 2);
     }
 
+    public async Task<string> GenerateDiffOverlayAsync(string baseImageUrl, string uploadedImageUrl, int targetWidth, int targetHeight)
+    {
+        var basePath = GetPhysicalPath(baseImageUrl);
+        var uploadedPath = GetPhysicalPath(uploadedImageUrl);
+
+        using var baseImage = Image.Load<Rgba32>(basePath);
+        using var uploadedImage = Image.Load<Rgba32>(uploadedPath);
+
+        if (uploadedImage.Width != targetWidth || uploadedImage.Height != targetHeight)
+        {
+            uploadedImage.Mutate(x => x.Resize(targetWidth, targetHeight));
+        }
+        if (baseImage.Width != targetWidth || baseImage.Height != targetHeight)
+        {
+            baseImage.Mutate(x => x.Resize(targetWidth, targetHeight));
+        }
+
+        using var overlayImage = new Image<Rgba32>(targetWidth, targetHeight);
+        var completedColor = new Rgba32(255, 100, 100, 255);
+
+        for (int y = 0; y < targetHeight; y++)
+        {
+            for (int x = 0; x < targetWidth; x++)
+            {
+                var basePixel = baseImage[x, y];
+                var uploadedPixel = uploadedImage[x, y];
+
+                if (basePixel.A > AlphaThreshold)
+                {
+                    double distance = CalculateColorDistance(basePixel, uploadedPixel);
+                    if (distance > ColorTolerance)
+                    {
+                        overlayImage[x, y] = completedColor;
+                    }
+                    else
+                    {
+                        overlayImage[x, y] = new Rgba32(255, 255, 255, 255);
+                    }
+                }
+                else
+                {
+                    overlayImage[x, y] = new Rgba32(240, 240, 240, 255);
+                }
+            }
+        }
+
+        var overlaysPath = Path.Combine(_environment.WebRootPath, "uploads", "overlays");
+        Directory.CreateDirectory(overlaysPath);
+
+        var overlayFileName = $"{Guid.NewGuid()}.png";
+        var overlayFilePath = Path.Combine(overlaysPath, overlayFileName);
+
+        await overlayImage.SaveAsPngAsync(overlayFilePath);
+
+        return $"/uploads/overlays/{overlayFileName}";
+    }
+
+    public async Task<string> GenerateDiffOverlayWithMaskAsync(string maskImageUrl, string baseImageUrl, string uploadedImageUrl, int targetWidth, int targetHeight)
+    {
+        var maskPath = GetPhysicalPath(maskImageUrl);
+        var basePath = GetPhysicalPath(baseImageUrl);
+        var uploadedPath = GetPhysicalPath(uploadedImageUrl);
+
+        using var maskImage = Image.Load<Rgba32>(maskPath);
+        using var baseImage = Image.Load<Rgba32>(basePath);
+        using var uploadedImage = Image.Load<Rgba32>(uploadedPath);
+
+        if (uploadedImage.Width != targetWidth || uploadedImage.Height != targetHeight)
+        {
+            uploadedImage.Mutate(x => x.Resize(targetWidth, targetHeight));
+        }
+        if (baseImage.Width != targetWidth || baseImage.Height != targetHeight)
+        {
+            baseImage.Mutate(x => x.Resize(targetWidth, targetHeight));
+        }
+        if (maskImage.Width != targetWidth || maskImage.Height != targetHeight)
+        {
+            maskImage.Mutate(x => x.Resize(targetWidth, targetHeight));
+        }
+
+        using var overlayImage = new Image<Rgba32>(targetWidth, targetHeight);
+        var completedColor = new Rgba32(255, 100, 100, 255);
+
+        for (int y = 0; y < targetHeight; y++)
+        {
+            for (int x = 0; x < targetWidth; x++)
+            {
+                var maskPixel = maskImage[x, y];
+
+                if (IsWorkAreaInMask(maskPixel))
+                {
+                    var basePixel = baseImage[x, y];
+                    var uploadedPixel = uploadedImage[x, y];
+                    double distance = CalculateColorDistance(basePixel, uploadedPixel);
+                    if (distance > ColorTolerance)
+                    {
+                        overlayImage[x, y] = completedColor;
+                    }
+                    else
+                    {
+                        overlayImage[x, y] = new Rgba32(255, 255, 255, 255);
+                    }
+                }
+                else
+                {
+                    overlayImage[x, y] = new Rgba32(240, 240, 240, 255);
+                }
+            }
+        }
+
+        var overlaysPath = Path.Combine(_environment.WebRootPath, "uploads", "overlays");
+        Directory.CreateDirectory(overlaysPath);
+
+        var overlayFileName = $"{Guid.NewGuid()}.png";
+        var overlayFilePath = Path.Combine(overlaysPath, overlayFileName);
+
+        await overlayImage.SaveAsPngAsync(overlayFilePath);
+
+        return $"/uploads/overlays/{overlayFileName}";
+    }
+
     private static bool IsBackground(Rgba32 pixel)
     {
         if (pixel.A <= AlphaThreshold)

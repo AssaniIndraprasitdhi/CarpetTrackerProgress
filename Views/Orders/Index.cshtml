@@ -1,14 +1,21 @@
-@model List<CarpetProgressTracker.Models.Order>
+@model CarpetProgressTracker.Models.OrdersListViewModel
 @{
     ViewData["Title"] = "Orders";
 }
 
 <div class="page-header">
     <h1 class="page-title">Orders</h1>
-    <a asp-action="Create" class="btn btn-primary">+ Create New Order</a>
+    <a asp-action="Create" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" x2="12" y1="5" y2="19" />
+            <line x1="5" x2="19" y1="12" y2="12" />
+        </svg>
+        <span>New Order</span>
+    </a>
 </div>
 
-@if (Model.Count == 0)
+@if (Model.TotalCount == 0 && string.IsNullOrEmpty(Model.Search) && string.IsNullOrEmpty(Model.Mode))
 {
     <div class="card">
         <div class="card-body empty-state">
@@ -21,80 +28,256 @@
 }
 else
 {
-    <div class="card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Order Number</th>
-                            <th>Preview</th>
-                            <th>Dimensions</th>
-                            <th>Mode</th>
-                            <th>Progress</th>
-                            <th>Last Updated</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var order in Model)
-                        {
-                            <tr>
-                                <td>
-                                    <a asp-action="Details" asp-route-id="@order.Id" class="fw-bold text-decoration-none">
-                                        @order.OrderNumber
-                                    </a>
-                                </td>
-                                <td>
-                                    @if (!string.IsNullOrEmpty(order.BaseImageUrl))
-                                    {
-                                        <img src="@order.BaseImageUrl" class="thumbnail" alt="Base Image" />
-                                    }
-                                </td>
-                                <td>
-                                    <span class="text-muted">@order.StandardWidth × @order.StandardHeight</span>
-                                </td>
-                                <td>
-                                    @if (order.ProgressMode == "overlay")
-                                    {
-                                        <span class="badge badge-overlay">Overlay</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge badge-diff">Diff</span>
-                                    }
-                                </td>
-                                <td style="min-width: 150px;">
-                                    <div class="progress">
-                                        @if (order.CurrentProgress >= 100)
-                                        {
-                                            <div class="progress-bar bg-success" style="width: @order.CurrentProgress%">
-                                                @order.CurrentProgress%
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="progress-bar" style="width: @order.CurrentProgress%">
-                                                @order.CurrentProgress%
-                                            </div>
-                                        }
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="text-muted">@order.UpdatedAt.ToString("MMM dd, yyyy HH:mm")</span>
-                                </td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <a asp-action="Details" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">View</a>
-                                        <a asp-controller="Progress" asp-action="Draw" asp-route-orderId="@order.Id" class="btn btn-sm btn-success">Draw</a>
-                                        <a asp-controller="Progress" asp-action="Upload" asp-route-orderId="@order.Id" class="btn btn-sm btn-info">Upload</a>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+    <form method="get" asp-action="Index" id="filterForm">
+        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+        <div class="filters-bar">
+            <div class="search-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input type="text" name="search" class="form-control" placeholder="Search orders..."
+                    value="@Model.Search" />
+            </div>
+            <div class="filter-tabs">
+                <button type="submit" name="mode" value=""
+                    class="filter-tab @(string.IsNullOrEmpty(Model.Mode) ? "active" : "")">All</button>
+                <button type="submit" name="mode" value="overlay"
+                    class="filter-tab @(Model.Mode == "overlay" ? "active" : "")">Overlay</button>
+                <button type="submit" name="mode" value="upload_diff"
+                    class="filter-tab @(Model.Mode == "upload_diff" ? "active" : "")">Diff</button>
+            </div>
+            <div class="orders-count">
+                <span>@Model.TotalCount</span> orders
             </div>
         </div>
-    </div>
+    </form>
+
+    @if (Model.Orders.Count == 0)
+    {
+        <div class="card">
+            <div class="card-body empty-state py-5">
+                <div class="empty-state-icon">🔍</div>
+                <h5>No matching orders</h5>
+                <p class="text-muted mb-0">Try adjusting your search or filter.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="orders-list">
+            @foreach (var order in Model.Orders)
+            {
+                var progressClass = order.CurrentProgress >= 100 ? "complete" : order.CurrentProgress >= 50 ? "high" :
+                order.CurrentProgress >= 25 ? "medium" : "low";
+                var minWidth = order.CurrentProgress > 0 && order.CurrentProgress < 8 ? "8%" : $"{order.CurrentProgress}%";
+                <div class="order-card">
+                    <div class="order-preview">
+                        @if (!string.IsNullOrEmpty(order.CurrentImageUrl))
+                        {
+                            <img src="@order.CurrentImageUrl" alt="Progress" />
+                        }
+                        else if (!string.IsNullOrEmpty(order.BaseImageUrl))
+                        {
+                            <img src="@order.BaseImageUrl" alt="Base" />
+                        }
+                        else
+                        {
+                            <div class="no-preview">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                                    <circle cx="9" cy="9" r="2" />
+                                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                                </svg>
+                            </div>
+                        }
+                    </div>
+                    <div class="order-info">
+                        <div class="order-header">
+                            <a asp-action="Details" asp-route-id="@order.Id" class="order-title">@order.OrderNumber</a>
+                            @if (order.ProgressMode == "overlay")
+                            {
+                                <span class="badge badge-overlay">Overlay</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-diff">Diff</span>
+                            }
+                        </div>
+                        <div class="order-meta">
+                            <span>@order.StandardWidth × @order.StandardHeight px</span>
+                            <span class="separator">•</span>
+                            <span>Updated @order.UpdatedAt.ToString("MMM dd, yyyy")</span>
+                        </div>
+                        <div class="order-progress">
+                            <div class="progress-display">
+                                <span class="progress-badge @progressClass">@order.CurrentProgress%</span>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill @progressClass" style="width: @minWidth;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="order-actions">
+                        <a asp-action="Details" asp-route-id="@order.Id" class="action-btn" title="View Details">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                        </a>
+                        <a asp-controller="Progress" asp-action="Draw" asp-route-orderId="@order.Id"
+                            class="action-btn action-btn-success" title="Draw Progress">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                                <path d="M2 2l7.586 7.586" />
+                                <circle cx="11" cy="11" r="2" />
+                            </svg>
+                        </a>
+                        <a asp-controller="Progress" asp-action="Upload" asp-route-orderId="@order.Id"
+                            class="action-btn action-btn-info" title="Upload Image">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" x2="12" y1="3" y2="15" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="pagination-container">
+            <div class="pagination-info">
+                Showing @Model.StartItem–@Model.EndItem of @Model.TotalCount
+            </div>
+            <div class="pagination-controls">
+                @if (Model.HasPreviousPage)
+                {
+                    <a asp-action="Index" asp-route-page="@(Model.CurrentPage - 1)" asp-route-pageSize="@Model.PageSize"
+                        asp-route-search="@Model.Search" asp-route-mode="@Model.Mode" class="pagination-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                        <span>Prev</span>
+                    </a>
+                }
+                else
+                {
+                    <span class="pagination-btn disabled">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                        <span>Prev</span>
+                    </span>
+                }
+
+                <div class="pagination-pages">
+                    @{
+                        var totalPages = Model.TotalPages;
+                        var currentPage = Model.CurrentPage;
+                        var startPage = Math.Max(1, currentPage - 2);
+                        var endPage = Math.Min(totalPages, currentPage + 2);
+
+                        if (startPage > 1)
+                        {
+                            <a asp-action="Index" asp-route-page="1" asp-route-pageSize="@Model.PageSize"
+                                asp-route-search="@Model.Search" asp-route-mode="@Model.Mode" class="pagination-page">1</a>
+                            if (startPage > 2)
+                            {
+                                <span class="pagination-ellipsis">…</span>
+                            }
+                        }
+
+                        for (var i = startPage; i <= endPage; i++)
+                        {
+                            if (i == currentPage)
+                            {
+                                <span class="pagination-page active">@i</span>
+                            }
+                            else
+                            {
+                                <a asp-action="Index" asp-route-page="@i" asp-route-pageSize="@Model.PageSize"
+                                    asp-route-search="@Model.Search" asp-route-mode="@Model.Mode" class="pagination-page">@i</a>
+                            }
+                        }
+
+                        if (endPage < totalPages)
+                        {
+                            if (endPage < totalPages - 1)
+                            {
+                                <span class="pagination-ellipsis">…</span>
+                            }
+                            <a asp-action="Index" asp-route-page="@totalPages" asp-route-pageSize="@Model.PageSize"
+                                asp-route-search="@Model.Search" asp-route-mode="@Model.Mode" class="pagination-page">@totalPages</a>
+                        }
+                    }
+                </div>
+
+                @if (Model.HasNextPage)
+                {
+                    <a asp-action="Index" asp-route-page="@(Model.CurrentPage + 1)" asp-route-pageSize="@Model.PageSize"
+                        asp-route-search="@Model.Search" asp-route-mode="@Model.Mode" class="pagination-btn">
+                        <span>Next</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </a>
+                }
+                else
+                {
+                    <span class="pagination-btn disabled">
+                        <span>Next</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </span>
+                }
+            </div>
+            <div class="pagination-size">
+                <span>Show</span>
+                <select id="pageSizeSelect" class="form-select form-select-sm">
+                    <option value="5" selected="@(Model.PageSize == 5 ? "selected" : null)">5</option>
+                    <option value="10" selected="@(Model.PageSize == 10 ? "selected" : null)">10</option>
+                    <option value="25" selected="@(Model.PageSize == 25 ? "selected" : null)">25</option>
+                    <option value="50" selected="@(Model.PageSize == 50 ? "selected" : null)">50</option>
+                    <option value="100" selected="@(Model.PageSize == 100 ? "selected" : null)">100</option>
+                </select>
+                <span>per page</span>
+            </div>
+        </div>
+    }
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            var searchInput = document.querySelector('input[name="search"]');
+            var filterForm = document.getElementById('filterForm');
+            var pageSizeSelect = document.getElementById('pageSizeSelect');
+            var searchTimeout;
+
+            if (searchInput && filterForm) {
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(function () {
+                        filterForm.submit();
+                    }, 500);
+                });
+            }
+
+            if (pageSizeSelect) {
+                pageSizeSelect.addEventListener('change', function () {
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('pageSize', this.value);
+                    url.searchParams.set('page', '1');
+                    window.location.href = url.toString();
+                });
+            }
+        })();
+    </script>
 }
