@@ -1186,20 +1186,24 @@
             flex-shrink: 0;
             background: none;
             border: none;
-            font-size: 1.25rem;
+            font-size: 1.5rem;
             color: #94a3b8;
             cursor: pointer;
             padding: 0;
-            width: 32px;
-            height: 32px;
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            min-height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 6px;
+            border-radius: 8px;
             transition: background-color 0.2s;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .toast-close:hover {
+        .toast-close:hover,
+        .toast-close:active {
             background-color: #f1f5f9;
             color: #64748b;
         }
@@ -1217,10 +1221,16 @@
             align-items: center;
             z-index: 10001;
             padding: 1rem;
+            overscroll-behavior: contain;
         }
 
         .modal-overlay.active {
             display: flex;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+            touch-action: none;
         }
 
         .modal-dialog {
@@ -1294,8 +1304,10 @@
 
         .modal-footer .btn {
             flex: 1;
-            min-height: 48px;
+            min-height: 52px;
             font-size: 1rem;
+            font-weight: 600;
+            -webkit-tap-highlight-color: transparent;
         }
 
         @@media (max-width: 480px) {
@@ -1313,6 +1325,18 @@
 
             .modal-footer .btn {
                 width: 100%;
+                min-height: 56px;
+            }
+        }
+
+        @@media (min-width: 768px) and (max-width: 1024px) {
+            .modal-footer .btn {
+                min-height: 56px;
+                font-size: 1.0625rem;
+            }
+
+            .modal-dialog {
+                max-width: 480px;
             }
         }
     </style>
@@ -1415,6 +1439,8 @@
 
         function showToast(type, title, message, duration) {
             var container = document.getElementById('toastContainer');
+            if (!container) return;
+
             var toast = document.createElement('div');
             toast.className = 'toast toast-' + type;
 
@@ -1427,7 +1453,7 @@
                     '<div class="toast-title">' + title + '</div>' +
                     '<div class="toast-message">' + message + '</div>' +
                 '</div>' +
-                '<button type="button" class="toast-close">×</button>';
+                '<button type="button" class="toast-close" aria-label="Close">×</button>';
 
             container.appendChild(toast);
 
@@ -1440,14 +1466,18 @@
                 dismissToast(toast);
             });
 
-            var timeout = duration || 5000;
+            if (type === 'error') {
+                return;
+            }
+
+            var timeout = duration || (type === 'success' ? 4000 : 5000);
             setTimeout(function() {
                 dismissToast(toast);
             }, timeout);
         }
 
         function dismissToast(toast) {
-            if (toast.classList.contains('hide')) return;
+            if (!toast || toast.classList.contains('hide')) return;
             toast.classList.remove('show');
             toast.classList.add('hide');
             setTimeout(function() {
@@ -1470,9 +1500,19 @@
         }
 
         var confirmModalCallback = null;
+        var confirmModalCancelCallback = null;
 
         function showConfirmModal(options) {
             var modal = document.getElementById('confirmModal');
+            if (!modal) {
+                if (window.confirm(options.message || 'Are you sure?')) {
+                    if (options.onConfirm) options.onConfirm();
+                } else {
+                    if (options.onCancel) options.onCancel();
+                }
+                return;
+            }
+
             var title = document.getElementById('confirmModalTitle');
             var body = document.getElementById('confirmModalBody');
             var icon = document.getElementById('confirmModalIcon');
@@ -1500,28 +1540,62 @@
             document.getElementById('confirmModalCancel').textContent = options.cancelText || 'Cancel';
 
             confirmModalCallback = options.onConfirm || null;
+            confirmModalCancelCallback = options.onCancel || null;
+
+            document.body.classList.add('modal-open');
             modal.classList.add('active');
+
+            setTimeout(function() {
+                confirmBtn.focus();
+            }, 100);
         }
 
         function hideConfirmModal() {
-            document.getElementById('confirmModal').classList.remove('active');
+            var modal = document.getElementById('confirmModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            document.body.classList.remove('modal-open');
             confirmModalCallback = null;
+            confirmModalCancelCallback = null;
         }
 
         document.getElementById('confirmModalConfirm').addEventListener('click', function() {
-            if (confirmModalCallback) {
-                confirmModalCallback();
-            }
+            var callback = confirmModalCallback;
             hideConfirmModal();
+            if (callback) {
+                callback();
+            }
         });
 
         document.getElementById('confirmModalCancel').addEventListener('click', function() {
+            var callback = confirmModalCancelCallback;
             hideConfirmModal();
+            if (callback) {
+                callback();
+            }
         });
 
         document.getElementById('confirmModal').addEventListener('click', function(e) {
             if (e.target === this) {
+                var callback = confirmModalCancelCallback;
                 hideConfirmModal();
+                if (callback) {
+                    callback();
+                }
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                var modal = document.getElementById('confirmModal');
+                if (modal && modal.classList.contains('active')) {
+                    var callback = confirmModalCancelCallback;
+                    hideConfirmModal();
+                    if (callback) {
+                        callback();
+                    }
+                }
             }
         });
 
@@ -1548,6 +1622,27 @@
                 });
             });
         });
+
+        (function() {
+            var successAlert = document.querySelector('.alert-success');
+            var errorAlert = document.querySelector('.alert-danger');
+
+            if (successAlert) {
+                var message = successAlert.textContent.replace('Success:', '').trim();
+                successAlert.style.display = 'none';
+                setTimeout(function() {
+                    showSuccessToast('Success', message);
+                }, 100);
+            }
+
+            if (errorAlert) {
+                var message = errorAlert.textContent.replace('Error:', '').trim();
+                errorAlert.style.display = 'none';
+                setTimeout(function() {
+                    showErrorToast('Error', message);
+                }, 100);
+            }
+        })();
     </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

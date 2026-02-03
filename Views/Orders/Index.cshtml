@@ -74,11 +74,7 @@ else
                 var minWidth = order.CurrentProgress > 0 && order.CurrentProgress < 8 ? "8%" : $"{order.CurrentProgress}%";
                 <div class="order-card">
                     <div class="order-preview">
-                        @if (!string.IsNullOrEmpty(order.CurrentImageUrl))
-                        {
-                            <img src="@order.CurrentImageUrl" alt="Progress" />
-                        }
-                        else if (!string.IsNullOrEmpty(order.BaseImageUrl))
+                        @if (!string.IsNullOrEmpty(order.BaseImageUrl))
                         {
                             <img src="@order.BaseImageUrl" alt="Base" />
                         }

@@ -179,7 +179,7 @@
     <a asp-action="Index" class="btn btn-outline-secondary">Back to Orders</a>
     <form id="deleteOrderForm" asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
         @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to delete this order? This action cannot be undone.');">Delete Order</button>
+        <button type="button" id="deleteOrderBtn" class="btn btn-outline-danger">Delete Order</button>
     </form>
 </div>
 
@@ -187,13 +187,29 @@
 <script>
 (function() {
     var form = document.getElementById('deleteOrderForm');
-    if (!form) return;
+    var btn = document.getElementById('deleteOrderBtn');
+    if (!form || !btn) return;
 
-    form.addEventListener('submit', function(e) {
-        var ok = window.confirm('Are you sure you want to delete this order? This action cannot be undone.');
-        if (!ok) {
-            e.preventDefault();
-            e.stopPropagation();
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (typeof showConfirmModal === 'function') {
+            showConfirmModal({
+                title: 'Delete Order',
+                message: 'Are you sure you want to delete this order? This action cannot be undone.',
+                type: 'danger',
+                confirmText: 'Delete',
+                cancelText: 'Cancel',
+                onConfirm: function() {
+                    form.submit();
+                }
+            });
+        } else {
+            // Fallback if showConfirmModal is not available
+            if (window.confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+                form.submit();
+            }
         }
     });
 })();

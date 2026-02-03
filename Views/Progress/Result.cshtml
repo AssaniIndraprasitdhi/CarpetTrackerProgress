@@ -61,9 +61,20 @@
             </div>
             <div class="col-md-6">
                 <div class="card h-100">
-                    <div class="card-header">Progress Image</div>
+                    <div class="card-header">Progress Overlay</div>
                     <div class="card-body text-center p-4">
-                        <img src="@Model.CurrentImageUrl" class="img-fluid rounded" alt="Progress" />
+                        @if (!string.IsNullOrEmpty(Model.CurrentOverlayUrl))
+                        {
+                            <div class="checkerboard-bg rounded">
+                                <img src="@Model.CurrentOverlayUrl" class="img-fluid rounded" alt="Progress Overlay" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="overlay-placeholder rounded">
+                                <p class="text-muted mb-0">No overlay available</p>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
