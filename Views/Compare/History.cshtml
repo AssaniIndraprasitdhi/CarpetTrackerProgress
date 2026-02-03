@@ -1,0 +1,112 @@
+@model List<CarpetProgressTracker.Models.ProgressHistory>
+@{
+    ViewData["Title"] = "Progress Timeline";
+    var order = (CarpetProgressTracker.Models.Order)ViewBag.Order;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Progress Timeline - @order.OrderNumber</h1>
+    <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="btn btn-secondary">Back to Order</a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Order Summary</div>
+            <div class="card-body">
+                <p><strong>Order:</strong> @order.OrderNumber</p>
+                <p><strong>Size:</strong> @order.StandardWidth x @order.StandardHeight</p>
+                <p><strong>Current Progress:</strong></p>
+                <div class="progress progress-bar-custom">
+                    <div class="progress-bar @(order.CurrentProgress >= 100 ? "bg-success" : "bg-primary")"
+                         style="width: @order.CurrentProgress%">
+                        @order.CurrentProgress%
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Base Image</div>
+            <div class="card-body text-center">
+                <img src="@order.BaseImageUrl" class="img-fluid border" style="max-height: 200px;" alt="Base" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Timeline (@Model.Count records)</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Count == 0)
+        {
+            <div class="alert alert-info">No progress records yet.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Date & Time</th>
+                            <th>Progress</th>
+                            <th style="width: 40%;">Visual</th>
+                            <th>Image</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var index = Model.Count;
+                            decimal? previousProgress = null;
+                        }
+                        @foreach (var record in Model)
+                        {
+                            var change = previousProgress.HasValue ? record.ProgressPercentage - previousProgress.Value : 0;
+                            <tr>
+                                <td>@index</td>
+                                <td>@record.RecordedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>
+                                    <strong>@record.ProgressPercentage%</strong>
+                                    @if (previousProgress.HasValue && change != 0)
+                                    {
+                                        <span class="@(change > 0 ? "text-success" : "text-danger") small">
+                                            (@(change > 0 ? "+" : "")@change%)
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar @(record.ProgressPercentage >= 100 ? "bg-success" : "bg-primary")"
+                                             style="width: @record.ProgressPercentage%">
+                                            @record.ProgressPercentage%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(record.ImageUrl))
+                                    {
+                                        <a href="@record.ImageUrl" target="_blank">
+                                            <img src="@record.ImageUrl" class="thumbnail" alt="Progress @index" />
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                            previousProgress = record.ProgressPercentage;
+                            index--;
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-controller="Progress" asp-action="Draw" asp-route-orderId="@order.Id" class="btn btn-success">Draw Progress</a>
+    <a asp-controller="Progress" asp-action="Upload" asp-route-orderId="@order.Id" class="btn btn-info">Upload Progress</a>
+    <a asp-controller="Compare" asp-action="Index" asp-route-orderId="@order.Id" class="btn btn-warning">Compare</a>
+</div>

@@ -1,0 +1,98 @@
+using CarpetProgressTracker.Data;
+using CarpetProgressTracker.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace CarpetProgressTracker.Services;
+
+public class OrderService
+{
+    private readonly AppDbContext _context;
+    private readonly ImageService _imageService;
+
+    public OrderService(AppDbContext context, ImageService imageService)
+    {
+        _context = context;
+        _imageService = imageService;
+    }
+
+    public async Task<List<Order>> GetAllOrdersAsync()
+    {
+        return await _context.Orders
+            .OrderByDescending(o => o.UpdatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<Order?> GetOrderByIdAsync(int id)
+    {
+        return await _context.Orders
+            .Include(o => o.ProgressHistories.OrderByDescending(p => p.RecordedAt))
+            .FirstOrDefaultAsync(o => o.Id == id);
+    }
+
+    public async Task<Order?> GetOrderByNumberAsync(string orderNumber)
+    {
+        return await _context.Orders
+            .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
+    }
+
+    public async Task<Order> CreateOrderAsync(string orderNumber, IFormFile baseImage, string progressMode)
+    {
+        var imageUrl = await _imageService.SaveImageAsync(baseImage, "base");
+        var (width, height, totalPixels) = _imageService.GetImageInfo(imageUrl);
+
+        var order = new Order
+        {
+            OrderNumber = orderNumber,
+            BaseImageUrl = imageUrl,
+            StandardWidth = width,
+            StandardHeight = height,
+            TotalPixels = totalPixels,
+            ProgressMode = progressMode,
+            CurrentProgress = 0,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync();
+
+        return order;
+    }
+
+    public async Task UpdateProgressAsync(Order order, string imageUrl, decimal progress)
+    {
+        order.CurrentImageUrl = imageUrl;
+        order.CurrentProgress = progress;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        var history = new ProgressHistory
+        {
+            OrderId = order.Id,
+            OrderNumber = order.OrderNumber,
+            ImageUrl = imageUrl,
+            ProgressPercentage = progress,
+            RecordedAt = DateTime.UtcNow
+        };
+
+        _context.ProgressHistories.Add(history);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<ProgressHistory>> GetProgressHistoryAsync(int orderId)
+    {
+        return await _context.ProgressHistories
+            .Where(p => p.OrderId == orderId)
+            .OrderByDescending(p => p.RecordedAt)
+            .ToListAsync();
+    }
+
+    public async Task DeleteOrderAsync(int id)
+    {
+        var order = await _context.Orders.FindAsync(id);
+        if (order != null)
+        {
+            _context.Orders.Remove(order);
+            await _context.SaveChangesAsync();
+        }
+    }
+}

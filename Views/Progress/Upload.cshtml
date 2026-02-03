@@ -1,0 +1,83 @@
+@model CarpetProgressTracker.Models.Order
+@{
+    ViewData["Title"] = "Upload Progress";
+}
+
+<h1>Upload Progress - @Model.OrderNumber</h1>
+<p>Upload an image to compare with the base image. Standard size: @Model.StandardWidth x @Model.StandardHeight</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Base Image</div>
+            <div class="card-body text-center">
+                <img src="@Model.BaseImageUrl" class="img-fluid border" alt="Base Image" />
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Upload Progress Image</div>
+            <div class="card-body">
+                <form asp-action="SubmitUpload" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="orderId" value="@Model.Id" />
+
+                    <div class="mb-3">
+                        <label for="uploadedImage" class="form-label">Select Image</label>
+                        <input type="file" class="form-control" id="uploadedImage" name="uploadedImage" accept="image/*" required />
+                        <div class="form-text">Image will be resized to @Model.StandardWidth x @Model.StandardHeight if needed.</div>
+                    </div>
+
+                    <div id="previewContainer" style="display: none;" class="mb-3">
+                        <label class="form-label">Preview</label>
+                        <div class="text-center">
+                            <img id="uploadPreview" class="img-fluid border" style="max-height: 300px;" />
+                        </div>
+                        <div id="uploadDimensions" class="form-text text-center"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Calculate Progress</button>
+                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Current Status</div>
+            <div class="card-body">
+                <p><strong>Current Progress:</strong> @Model.CurrentProgress%</p>
+                <div class="progress progress-bar-custom">
+                    <div class="progress-bar" style="width: @Model.CurrentProgress%">@Model.CurrentProgress%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('uploadedImage').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('uploadPreview').src = e.target.result;
+            document.getElementById('previewContainer').style.display = 'block';
+
+            var img = new Image();
+            img.onload = function() {
+                var text = 'Dimensions: ' + img.width + ' x ' + img.height;
+                if (img.width !== @Model.StandardWidth || img.height !== @Model.StandardHeight) {
+                    text += ' (will be resized to @Model.StandardWidth x @Model.StandardHeight)';
+                }
+                document.getElementById('uploadDimensions').textContent = text;
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+}

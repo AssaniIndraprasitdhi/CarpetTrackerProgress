@@ -1,0 +1,67 @@
+@model CarpetProgressTracker.Models.Order
+@{
+    ViewData["Title"] = "Progress Result";
+    var progress = (decimal)ViewBag.Progress;
+}
+
+<h1>Progress Result - @Model.OrderNumber</h1>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card mb-4">
+            <div class="card-header text-center">
+                <h3>Progress Calculated</h3>
+            </div>
+            <div class="card-body text-center">
+                <div class="display-1 mb-4 @(progress >= 100 ? "text-success" : progress >= 50 ? "text-primary" : "text-warning")">
+                    @progress%
+                </div>
+
+                <div class="progress progress-bar-custom mb-4" style="height: 40px;">
+                    <div class="progress-bar @(progress >= 100 ? "bg-success" : "bg-primary")"
+                         style="width: @progress%">
+                        @progress%
+                    </div>
+                </div>
+
+                @if (progress >= 100)
+                {
+                    <div class="alert alert-success">
+                        <strong>Completed!</strong> This order has reached 100% progress.
+                    </div>
+                }
+                else if (progress >= 75)
+                {
+                    <div class="alert alert-info">
+                        <strong>Almost there!</strong> Great progress on this order.
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">Base Image</div>
+                    <div class="card-body text-center">
+                        <img src="@Model.BaseImageUrl" class="img-fluid border" alt="Base" />
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">Progress Image</div>
+                    <div class="card-body text-center">
+                        <img src="@Model.CurrentImageUrl" class="img-fluid border" alt="Progress" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-primary btn-lg">View Order Details</a>
+            <a asp-action="Draw" asp-route-orderId="@Model.Id" class="btn btn-success btn-lg">Draw More</a>
+            <a asp-action="Upload" asp-route-orderId="@Model.Id" class="btn btn-info btn-lg">Upload Another</a>
+        </div>
+    </div>
+</div>

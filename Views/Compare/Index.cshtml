@@ -1,0 +1,94 @@
+@model CarpetProgressTracker.Models.Order
+@{
+    ViewData["Title"] = "Compare";
+    var isOverlay = Model.ProgressMode == "overlay";
+}
+
+<h1>Compare - @Model.OrderNumber</h1>
+<p>Upload an image to compare against the base image using either mode.</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Base Image</div>
+            <div class="card-body text-center">
+                <img src="@Model.BaseImageUrl" class="img-fluid border" alt="Base Image" />
+                <p class="mt-2 text-muted">@Model.StandardWidth x @Model.StandardHeight pixels</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Upload for Comparison</div>
+            <div class="card-body">
+                <form asp-action="Compare" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="orderId" value="@Model.Id" />
+
+                    <div class="mb-3">
+                        <label for="compareImage" class="form-label">Select Image</label>
+                        <input type="file" class="form-control" id="compareImage" name="compareImage" accept="image/*" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="mode" class="form-label">Comparison Mode</label>
+                        <select class="form-select" id="mode" name="mode">
+                            @if (isOverlay)
+                            {
+                                <option value="overlay" selected>Overlay (Alpha &gt; 10)</option>
+                                <option value="upload_diff">Color Diff (Distance &gt; 30)</option>
+                            }
+                            else
+                            {
+                                <option value="overlay">Overlay (Alpha &gt; 10)</option>
+                                <option value="upload_diff" selected>Color Diff (Distance &gt; 30)</option>
+                            }
+                        </select>
+                        <div class="form-text">
+                            <strong>Overlay:</strong> Counts pixels with alpha &gt; 10 as completed.<br />
+                            <strong>Color Diff:</strong> Counts pixels where color distance &gt; 30 as completed.
+                        </div>
+                    </div>
+
+                    <div id="comparePreviewContainer" style="display: none;" class="mb-3">
+                        <label class="form-label">Preview</label>
+                        <div class="text-center">
+                            <img id="comparePreview" class="img-fluid border" style="max-height: 200px;" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning">Compare</button>
+                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Current Status</div>
+            <div class="card-body">
+                <p><strong>Mode:</strong> <span class="badge @(isOverlay ? "bg-info" : "bg-warning")">@Model.ProgressMode</span></p>
+                <p><strong>Current Progress:</strong> @Model.CurrentProgress%</p>
+                <div class="progress progress-bar-custom">
+                    <div class="progress-bar" style="width: @Model.CurrentProgress%">@Model.CurrentProgress%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('compareImage').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('comparePreview').src = e.target.result;
+            document.getElementById('comparePreviewContainer').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+}

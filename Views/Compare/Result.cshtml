@@ -1,0 +1,58 @@
+@model CarpetProgressTracker.Models.Order
+@{
+    ViewData["Title"] = "Comparison Result";
+    var progress = (decimal)ViewBag.Progress;
+    var mode = (string)ViewBag.Mode;
+    var compareImageUrl = (string)ViewBag.CompareImageUrl;
+}
+
+<h1>Comparison Result - @Model.OrderNumber</h1>
+
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between">
+                    <span>Result</span>
+                    <span class="badge @(mode == "overlay" ? "bg-info" : "bg-warning")">@mode mode</span>
+                </div>
+            </div>
+            <div class="card-body text-center">
+                <div class="display-1 mb-3 @(progress >= 100 ? "text-success" : progress >= 50 ? "text-primary" : "text-warning")">
+                    @progress%
+                </div>
+                <div class="progress progress-bar-custom mb-4" style="height: 40px;">
+                    <div class="progress-bar @(progress >= 100 ? "bg-success" : "bg-primary")"
+                         style="width: @progress%">
+                        @progress%
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">Base Image</div>
+                    <div class="card-body text-center">
+                        <img src="@Model.BaseImageUrl" class="img-fluid border" alt="Base" />
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">Compared Image</div>
+                    <div class="card-body text-center">
+                        <img src="@compareImageUrl" class="img-fluid border" alt="Compared" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-primary">View Order</a>
+            <a asp-action="Index" asp-route-orderId="@Model.Id" class="btn btn-warning">Compare Another</a>
+            <a asp-action="History" asp-route-orderId="@Model.Id" class="btn btn-info">View Timeline</a>
+        </div>
+    </div>
+</div>

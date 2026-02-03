@@ -1,0 +1,75 @@
+@{
+    ViewData["Title"] = "Create Order";
+}
+
+<h1>Create New Order</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label for="orderNumber" class="form-label">Order Number</label>
+                <input type="text" class="form-control" id="orderNumber" name="orderNumber" required />
+                @if (ViewContext.ModelState["orderNumber"]?.Errors.Count > 0)
+                {
+                    <span class="text-danger">@ViewContext.ModelState["orderNumber"]?.Errors[0].ErrorMessage</span>
+                }
+            </div>
+
+            <div class="mb-3">
+                <label for="baseImage" class="form-label">Base Image (defines standard size)</label>
+                <input type="file" class="form-control" id="baseImage" name="baseImage" accept="image/*" required />
+                @if (ViewContext.ModelState["baseImage"]?.Errors.Count > 0)
+                {
+                    <span class="text-danger">@ViewContext.ModelState["baseImage"]?.Errors[0].ErrorMessage</span>
+                }
+                <div class="form-text">This image sets the standard width and height for all progress tracking.</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="progressMode" class="form-label">Progress Mode</label>
+                <select class="form-select" id="progressMode" name="progressMode">
+                    <option value="overlay" selected>Overlay (Draw on transparent layer)</option>
+                    <option value="upload_diff">Upload Diff (Compare uploaded images)</option>
+                </select>
+            </div>
+
+            <div class="mb-3" id="imagePreviewContainer" style="display: none;">
+                <label class="form-label">Preview</label>
+                <div>
+                    <img id="imagePreview" class="image-preview border" />
+                </div>
+                <div id="imageDimensions" class="form-text"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create Order</button>
+            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('baseImage').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = document.getElementById('imagePreview');
+            img.src = e.target.result;
+            document.getElementById('imagePreviewContainer').style.display = 'block';
+
+            var tempImg = new Image();
+            tempImg.onload = function() {
+                document.getElementById('imageDimensions').textContent =
+                    'Dimensions: ' + tempImg.width + ' x ' + tempImg.height + ' pixels';
+            };
+            tempImg.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+}

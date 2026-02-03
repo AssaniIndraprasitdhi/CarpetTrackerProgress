@@ -1,0 +1,169 @@
+@model CarpetProgressTracker.Models.Order
+@{
+    ViewData["Title"] = "Draw Progress";
+}
+
+<h1>Draw Progress - @Model.OrderNumber</h1>
+<p>Draw on the canvas to mark completed areas. Standard size: @Model.StandardWidth x @Model.StandardHeight</p>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Drawing Canvas</span>
+                    <div>
+                        <label class="me-2">Brush Size:</label>
+                        <input type="range" id="brushSize" min="1" max="50" value="10" style="width: 100px;" />
+                        <span id="brushSizeValue">10</span>px
+                        <label class="ms-3 me-2">Color:</label>
+                        <input type="color" id="brushColor" value="#ff0000" />
+                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="btnClear">Clear</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="btnUndo">Undo</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body text-center" style="overflow: auto;">
+                <div class="canvas-container" id="canvasContainer">
+                    <canvas id="baseCanvas"></canvas>
+                    <canvas id="overlayCanvas" class="canvas-overlay"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <form id="submitForm" asp-action="SubmitDraw" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="orderId" value="@Model.Id" />
+            <input type="file" name="overlayImage" id="overlayImageInput" style="display: none;" />
+            <button type="button" class="btn btn-success btn-lg" id="btnSubmit">Calculate Progress</button>
+            <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary btn-lg">Cancel</a>
+        </form>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Instructions</div>
+            <div class="card-body">
+                <ol>
+                    <li>Use mouse to draw on the canvas</li>
+                    <li>Adjust brush size and color as needed</li>
+                    <li>Mark areas that have been completed</li>
+                    <li>Click "Calculate Progress" to submit</li>
+                </ol>
+                <hr />
+                <p><strong>Current Progress:</strong> @Model.CurrentProgress%</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function() {
+    var baseCanvas = document.getElementById('baseCanvas');
+    var overlayCanvas = document.getElementById('overlayCanvas');
+    var baseCtx = baseCanvas.getContext('2d');
+    var overlayCtx = overlayCanvas.getContext('2d');
+
+    var width = @Model.StandardWidth;
+    var height = @Model.StandardHeight;
+
+    baseCanvas.width = width;
+    baseCanvas.height = height;
+    overlayCanvas.width = width;
+    overlayCanvas.height = height;
+
+    var baseImg = new Image();
+    baseImg.crossOrigin = 'anonymous';
+    baseImg.onload = function() {
+        baseCtx.drawImage(baseImg, 0, 0, width, height);
+    };
+    baseImg.src = '@Model.BaseImageUrl';
+
+    var isDrawing = false;
+    var lastX = 0;
+    var lastY = 0;
+    var history = [];
+
+    function saveState() {
+        if (history.length > 20) history.shift();
+        history.push(overlayCanvas.toDataURL());
+    }
+
+    function getBrushSize() {
+        return parseInt(document.getElementById('brushSize').value);
+    }
+
+    function getBrushColor() {
+        return document.getElementById('brushColor').value;
+    }
+
+    document.getElementById('brushSize').addEventListener('input', function() {
+        document.getElementById('brushSizeValue').textContent = this.value;
+    });
+
+    function getMousePos(e) {
+        var rect = overlayCanvas.getBoundingClientRect();
+        var scaleX = overlayCanvas.width / rect.width;
+        var scaleY = overlayCanvas.height / rect.height;
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
+        };
+    }
+
+    overlayCanvas.addEventListener('mousedown', function(e) {
+        saveState();
+        isDrawing = true;
+        var pos = getMousePos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+    });
+
+    overlayCanvas.addEventListener('mousemove', function(e) {
+        if (!isDrawing) return;
+        var pos = getMousePos(e);
+        overlayCtx.beginPath();
+        overlayCtx.strokeStyle = getBrushColor();
+        overlayCtx.lineWidth = getBrushSize();
+        overlayCtx.lineCap = 'round';
+        overlayCtx.lineJoin = 'round';
+        overlayCtx.moveTo(lastX, lastY);
+        overlayCtx.lineTo(pos.x, pos.y);
+        overlayCtx.stroke();
+        lastX = pos.x;
+        lastY = pos.y;
+    });
+
+    overlayCanvas.addEventListener('mouseup', function() { isDrawing = false; });
+    overlayCanvas.addEventListener('mouseout', function() { isDrawing = false; });
+
+    document.getElementById('btnClear').addEventListener('click', function() {
+        saveState();
+        overlayCtx.clearRect(0, 0, width, height);
+    });
+
+    document.getElementById('btnUndo').addEventListener('click', function() {
+        if (history.length > 0) {
+            var imgData = history.pop();
+            var img = new Image();
+            img.onload = function() {
+                overlayCtx.clearRect(0, 0, width, height);
+                overlayCtx.drawImage(img, 0, 0);
+            };
+            img.src = imgData;
+        }
+    });
+
+    document.getElementById('btnSubmit').addEventListener('click', function() {
+        overlayCanvas.toBlob(function(blob) {
+            var file = new File([blob], 'overlay.png', { type: 'image/png' });
+            var dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            document.getElementById('overlayImageInput').files = dataTransfer.files;
+            document.getElementById('submitForm').submit();
+        }, 'image/png');
+    });
+})();
+</script>
+}
