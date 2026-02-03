@@ -1,6 +1,7 @@
 @model CarpetProgressTracker.Models.Order
 @{
     ViewData["Title"] = "Draw Progress";
+    var hasExistingOverlay = !string.IsNullOrEmpty(Model.CurrentOverlayUrl);
 }
 
 <h1>Draw Progress - @Model.OrderNumber</h1>
@@ -52,6 +53,10 @@
                 </ol>
                 <hr />
                 <p><strong>Current Progress:</strong> @Model.CurrentProgress%</p>
+                @if (hasExistingOverlay)
+                {
+                    <p class="text-success"><small>Previous drawing loaded. Continue from where you left off.</small></p>
+                }
             </div>
         </div>
     </div>
@@ -79,6 +84,18 @@
         baseCtx.drawImage(baseImg, 0, 0, width, height);
     };
     baseImg.src = '@Model.BaseImageUrl';
+
+    @if (hasExistingOverlay)
+    {
+        <text>
+    var existingOverlay = new Image();
+    existingOverlay.crossOrigin = 'anonymous';
+    existingOverlay.onload = function() {
+        overlayCtx.drawImage(existingOverlay, 0, 0, width, height);
+    };
+    existingOverlay.src = '@Model.CurrentOverlayUrl';
+        </text>
+    }
 
     var isDrawing = false;
     var lastX = 0;
