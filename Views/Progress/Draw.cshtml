@@ -4,59 +4,100 @@
     var hasExistingOverlay = !string.IsNullOrEmpty(Model.CurrentOverlayUrl);
 }
 
-<h1>Draw Progress - @Model.OrderNumber</h1>
-<p>Draw on the canvas to mark completed areas. Standard size: @Model.StandardWidth x @Model.StandardHeight</p>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Draw Progress</h1>
+        <p class="text-muted mb-0">@Model.OrderNumber • @Model.StandardWidth × @Model.StandardHeight pixels</p>
+    </div>
+    <div class="action-buttons">
+        <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Back to Order</a>
+    </div>
+</div>
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="card mb-3">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span>Drawing Canvas</span>
-                    <div>
-                        <label class="me-2">Brush Size:</label>
-                        <input type="range" id="brushSize" min="1" max="50" value="10" style="width: 100px;" />
-                        <span id="brushSizeValue">10</span>px
-                        <label class="ms-3 me-2">Color:</label>
-                        <input type="color" id="brushColor" value="#ff0000" />
-                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="btnClear">Clear</button>
-                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="btnUndo">Undo</button>
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">Reference Image</div>
+            <div class="card-body text-center p-4" style="overflow: auto; background: #f1f5f9;">
+                <img src="@Model.BaseImageUrl" class="img-fluid rounded border" alt="Base Image" style="max-height: 500px;" />
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header card-header-light">
+                <div class="tools-bar">
+                    <div class="tool-group">
+                        <span class="tool-label">Brush:</span>
+                        <input type="range" id="brushSize" min="1" max="50" value="10" class="form-range" style="width: 100px;" />
+                        <span id="brushSizeValue" class="fw-bold">10</span>px
+                    </div>
+                    <div class="tool-group">
+                        <span class="tool-label">Color:</span>
+                        <input type="color" id="brushColor" value="#ff0000" style="width: 36px; height: 28px; padding: 0; border: none; cursor: pointer;" />
+                    </div>
+                    <div class="tool-group ms-auto">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnUndo">Undo</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="btnClear">Clear</button>
                     </div>
                 </div>
             </div>
-            <div class="card-body text-center" style="overflow: auto;">
+            <div class="card-body text-center p-4" style="overflow: auto; background: #f1f5f9;">
                 <div class="canvas-container" id="canvasContainer">
-                    <canvas id="baseCanvas"></canvas>
-                    <canvas id="overlayCanvas" class="canvas-overlay"></canvas>
+                    <canvas id="drawingCanvas"></canvas>
                 </div>
             </div>
         </div>
-
-        <form id="submitForm" asp-action="SubmitDraw" method="post" enctype="multipart/form-data">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="orderId" value="@Model.Id" />
-            <input type="file" name="overlayImage" id="overlayImageInput" style="display: none;" />
-            <button type="button" class="btn btn-success btn-lg" id="btnSubmit">Calculate Progress</button>
-            <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary btn-lg">Cancel</a>
-        </form>
     </div>
+</div>
 
-    <div class="col-md-4">
+<div class="row g-4 mt-2">
+    <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">Instructions</div>
+            <div class="card-header">Current Progress</div>
             <div class="card-body">
-                <ol>
-                    <li>Use mouse to draw on the canvas</li>
-                    <li>Adjust brush size and color as needed</li>
-                    <li>Mark areas that have been completed</li>
-                    <li>Click "Calculate Progress" to submit</li>
-                </ol>
-                <hr />
-                <p><strong>Current Progress:</strong> @Model.CurrentProgress%</p>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="stat-value @(Model.CurrentProgress >= 100 ? "text-success" : Model.CurrentProgress >= 50 ? "text-primary" : "text-warning")" style="font-size: 2.5rem;">
+                        @Model.CurrentProgress%
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="progress progress-lg">
+                            @if (Model.CurrentProgress >= 100)
+                            {
+                                <div class="progress-bar bg-success" style="width: @Model.CurrentProgress%">@Model.CurrentProgress%</div>
+                            }
+                            else
+                            {
+                                <div class="progress-bar" style="width: @Model.CurrentProgress%">@Model.CurrentProgress%</div>
+                            }
+                        </div>
+                    </div>
+                </div>
                 @if (hasExistingOverlay)
                 {
-                    <p class="text-success"><small>Previous drawing loaded. Continue from where you left off.</small></p>
+                    <div class="alert alert-success mb-0 mt-3">
+                        <small>Previous drawing loaded. Continue from where you left off.</small>
+                    </div>
                 }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">Actions</div>
+            <div class="card-body">
+                <p class="text-muted mb-3">Draw on the white canvas to mark completed areas. Use the reference image on the left as a guide.</p>
+                <div class="d-flex gap-2">
+                    <form id="submitForm" asp-action="SubmitDraw" method="post" enctype="multipart/form-data" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="orderId" value="@Model.Id" />
+                        <input type="file" name="overlayImage" id="overlayImageInput" style="display: none;" />
+                        <button type="button" class="btn btn-success btn-lg" id="btnSubmit">Calculate Progress</button>
+                    </form>
+                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                </div>
             </div>
         </div>
     </div>
@@ -65,25 +106,17 @@
 @section Scripts {
 <script>
 (function() {
-    var baseCanvas = document.getElementById('baseCanvas');
-    var overlayCanvas = document.getElementById('overlayCanvas');
-    var baseCtx = baseCanvas.getContext('2d');
-    var overlayCtx = overlayCanvas.getContext('2d');
+    var canvas = document.getElementById('drawingCanvas');
+    var ctx = canvas.getContext('2d');
 
     var width = @Model.StandardWidth;
     var height = @Model.StandardHeight;
 
-    baseCanvas.width = width;
-    baseCanvas.height = height;
-    overlayCanvas.width = width;
-    overlayCanvas.height = height;
+    canvas.width = width;
+    canvas.height = height;
 
-    var baseImg = new Image();
-    baseImg.crossOrigin = 'anonymous';
-    baseImg.onload = function() {
-        baseCtx.drawImage(baseImg, 0, 0, width, height);
-    };
-    baseImg.src = '@Model.BaseImageUrl';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
 
     @if (hasExistingOverlay)
     {
@@ -91,7 +124,7 @@
     var existingOverlay = new Image();
     existingOverlay.crossOrigin = 'anonymous';
     existingOverlay.onload = function() {
-        overlayCtx.drawImage(existingOverlay, 0, 0, width, height);
+        ctx.drawImage(existingOverlay, 0, 0, width, height);
     };
     existingOverlay.src = '@Model.CurrentOverlayUrl';
         </text>
@@ -104,8 +137,10 @@
 
     function saveState() {
         if (history.length > 20) history.shift();
-        history.push(overlayCanvas.toDataURL());
+        history.push(canvas.toDataURL());
     }
+
+    saveState();
 
     function getBrushSize() {
         return parseInt(document.getElementById('brushSize').value);
@@ -120,16 +155,16 @@
     });
 
     function getMousePos(e) {
-        var rect = overlayCanvas.getBoundingClientRect();
-        var scaleX = overlayCanvas.width / rect.width;
-        var scaleY = overlayCanvas.height / rect.height;
+        var rect = canvas.getBoundingClientRect();
+        var scaleX = canvas.width / rect.width;
+        var scaleY = canvas.height / rect.height;
         return {
             x: (e.clientX - rect.left) * scaleX,
             y: (e.clientY - rect.top) * scaleY
         };
     }
 
-    overlayCanvas.addEventListener('mousedown', function(e) {
+    canvas.addEventListener('mousedown', function(e) {
         saveState();
         isDrawing = true;
         var pos = getMousePos(e);
@@ -137,43 +172,48 @@
         lastY = pos.y;
     });
 
-    overlayCanvas.addEventListener('mousemove', function(e) {
+    canvas.addEventListener('mousemove', function(e) {
         if (!isDrawing) return;
         var pos = getMousePos(e);
-        overlayCtx.beginPath();
-        overlayCtx.strokeStyle = getBrushColor();
-        overlayCtx.lineWidth = getBrushSize();
-        overlayCtx.lineCap = 'round';
-        overlayCtx.lineJoin = 'round';
-        overlayCtx.moveTo(lastX, lastY);
-        overlayCtx.lineTo(pos.x, pos.y);
-        overlayCtx.stroke();
+        ctx.beginPath();
+        ctx.strokeStyle = getBrushColor();
+        ctx.lineWidth = getBrushSize();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
         lastX = pos.x;
         lastY = pos.y;
     });
 
-    overlayCanvas.addEventListener('mouseup', function() { isDrawing = false; });
-    overlayCanvas.addEventListener('mouseout', function() { isDrawing = false; });
+    canvas.addEventListener('mouseup', function() { isDrawing = false; });
+    canvas.addEventListener('mouseout', function() { isDrawing = false; });
 
     document.getElementById('btnClear').addEventListener('click', function() {
-        saveState();
-        overlayCtx.clearRect(0, 0, width, height);
+        if (confirm('Clear all drawings? This cannot be undone.')) {
+            saveState();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+        }
     });
 
     document.getElementById('btnUndo').addEventListener('click', function() {
-        if (history.length > 0) {
-            var imgData = history.pop();
+        if (history.length > 1) {
+            history.pop();
+            var imgData = history[history.length - 1];
             var img = new Image();
             img.onload = function() {
-                overlayCtx.clearRect(0, 0, width, height);
-                overlayCtx.drawImage(img, 0, 0);
+                ctx.clearRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0);
             };
             img.src = imgData;
         }
     });
 
     document.getElementById('btnSubmit').addEventListener('click', function() {
-        overlayCanvas.toBlob(function(blob) {
+        showLoading('Calculating progress...');
+        canvas.toBlob(function(blob) {
             var file = new File([blob], 'overlay.png', { type: 'image/png' });
             var dataTransfer = new DataTransfer();
             dataTransfer.items.add(file);

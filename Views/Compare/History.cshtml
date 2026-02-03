@@ -4,58 +4,91 @@
     var order = (CarpetProgressTracker.Models.Order)ViewBag.Order;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Progress Timeline - @order.OrderNumber</h1>
-    <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="btn btn-secondary">Back to Order</a>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Progress Timeline</h1>
+        <p class="text-muted mb-0">@order.OrderNumber • @Model.Count records</p>
+    </div>
+    <div class="action-buttons">
+        <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="btn btn-outline-secondary">Back to Order</a>
+    </div>
 </div>
 
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">Order Summary</div>
-            <div class="card-body">
-                <p><strong>Order:</strong> @order.OrderNumber</p>
-                <p><strong>Size:</strong> @order.StandardWidth x @order.StandardHeight</p>
-                <p><strong>Current Progress:</strong></p>
-                <div class="progress progress-bar-custom">
-                    <div class="progress-bar @(order.CurrentProgress >= 100 ? "bg-success" : "bg-primary")"
-                         style="width: @order.CurrentProgress%">
-                        @order.CurrentProgress%
-                    </div>
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">Current Progress</div>
+            <div class="card-body stat-card">
+                <div class="stat-value @(order.CurrentProgress >= 100 ? "text-success" : order.CurrentProgress >= 50 ? "text-primary" : "text-warning")">
+                    @order.CurrentProgress%
+                </div>
+                <div class="stat-label mb-3">Completion</div>
+                <div class="progress progress-lg">
+                    @if (order.CurrentProgress >= 100)
+                    {
+                        <div class="progress-bar bg-success" style="width: @order.CurrentProgress%">@order.CurrentProgress%</div>
+                    }
+                    else
+                    {
+                        <div class="progress-bar" style="width: @order.CurrentProgress%">@order.CurrentProgress%</div>
+                    }
                 </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-8">
+
         <div class="card">
+            <div class="card-header">Order Details</div>
+            <div class="card-body">
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted">Order</td>
+                        <td class="fw-bold">@order.OrderNumber</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Dimensions</td>
+                        <td>@order.StandardWidth × @order.StandardHeight</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card h-100">
             <div class="card-header">Base Image</div>
-            <div class="card-body text-center">
-                <img src="@order.BaseImageUrl" class="img-fluid border" style="max-height: 200px;" alt="Base" />
+            <div class="card-body text-center p-4">
+                <img src="@order.BaseImageUrl" class="img-fluid rounded" style="max-height: 250px;" alt="Base" />
             </div>
         </div>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">Timeline (@Model.Count records)</h5>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Timeline</span>
+        <span class="badge bg-light text-dark">@Model.Count records</span>
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         @if (Model.Count == 0)
         {
-            <div class="alert alert-info">No progress records yet.</div>
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <h5>No Records Yet</h5>
+                <p class="text-muted mb-3">Start tracking progress to build your timeline.</p>
+                <a asp-controller="Progress" asp-action="Draw" asp-route-orderId="@order.Id" class="btn btn-success">Start Drawing</a>
+            </div>
         }
         else
         {
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-dark">
+                <table class="table table-hover mb-0">
+                    <thead>
                         <tr>
-                            <th>#</th>
+                            <th style="width: 60px;">#</th>
                             <th>Date & Time</th>
-                            <th>Progress</th>
-                            <th style="width: 40%;">Visual</th>
-                            <th>Image</th>
+                            <th style="width: 150px;">Progress</th>
+                            <th style="width: 35%;">Visual</th>
+                            <th>Preview</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -67,23 +100,27 @@
                         {
                             var change = previousProgress.HasValue ? record.ProgressPercentage - previousProgress.Value : 0;
                             <tr>
-                                <td>@index</td>
-                                <td>@record.RecordedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td class="text-muted">@index</td>
+                                <td>@record.RecordedAt.ToString("MMM dd, yyyy HH:mm")</td>
                                 <td>
-                                    <strong>@record.ProgressPercentage%</strong>
+                                    <span class="fw-bold">@record.ProgressPercentage%</span>
                                     @if (previousProgress.HasValue && change != 0)
                                     {
-                                        <span class="@(change > 0 ? "text-success" : "text-danger") small">
+                                        <span class="@(change > 0 ? "text-success" : "text-danger") small ms-1">
                                             (@(change > 0 ? "+" : "")@change%)
                                         </span>
                                     }
                                 </td>
                                 <td>
-                                    <div class="progress" style="height: 25px;">
-                                        <div class="progress-bar @(record.ProgressPercentage >= 100 ? "bg-success" : "bg-primary")"
-                                             style="width: @record.ProgressPercentage%">
-                                            @record.ProgressPercentage%
-                                        </div>
+                                    <div class="progress">
+                                        @if (record.ProgressPercentage >= 100)
+                                        {
+                                            <div class="progress-bar bg-success" style="width: @record.ProgressPercentage%">@record.ProgressPercentage%</div>
+                                        }
+                                        else
+                                        {
+                                            <div class="progress-bar" style="width: @record.ProgressPercentage%">@record.ProgressPercentage%</div>
+                                        }
                                     </div>
                                 </td>
                                 <td>
@@ -105,7 +142,7 @@
     </div>
 </div>
 
-<div class="mt-4">
+<div class="d-flex gap-2 mt-4">
     <a asp-controller="Progress" asp-action="Draw" asp-route-orderId="@order.Id" class="btn btn-success">Draw Progress</a>
     <a asp-controller="Progress" asp-action="Upload" asp-route-orderId="@order.Id" class="btn btn-info">Upload Progress</a>
     <a asp-controller="Compare" asp-action="Index" asp-route-orderId="@order.Id" class="btn btn-warning">Compare</a>

@@ -147,6 +147,21 @@ public class ImageService
             overlayImage.Mutate(x => x.Resize(baseImage.Width, baseImage.Height));
         }
 
+        overlayImage.ProcessPixelRows(accessor =>
+        {
+            for (int y = 0; y < accessor.Height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                for (int x = 0; x < row.Length; x++)
+                {
+                    if (row[x].R > WhiteThreshold && row[x].G > WhiteThreshold && row[x].B > WhiteThreshold)
+                    {
+                        row[x] = new Rgba32(255, 255, 255, 0);
+                    }
+                }
+            }
+        });
+
         baseImage.Mutate(x => x.DrawImage(overlayImage, 1f));
 
         var mergedPath = Path.Combine(_environment.WebRootPath, "uploads", "merged");
@@ -210,7 +225,7 @@ public class ImageService
                     if (baseRow[x].A > AlphaThreshold)
                     {
                         totalPixels++;
-                        if (overlayRow[x].A > AlphaThreshold)
+                        if (IsDrawnPixel(overlayRow[x]))
                         {
                             completedPixels++;
                         }
@@ -251,7 +266,7 @@ public class ImageService
                     if (IsWorkAreaInMask(maskRow[x]))
                     {
                         totalPixels++;
-                        if (overlayRow[x].A > AlphaThreshold)
+                        if (IsDrawnPixel(overlayRow[x]))
                         {
                             completedPixels++;
                         }
@@ -359,6 +374,11 @@ public class ImageService
     private static bool IsWorkAreaInMask(Rgba32 maskPixel)
     {
         return maskPixel.R > 128;
+    }
+
+    private static bool IsDrawnPixel(Rgba32 pixel)
+    {
+        return !(pixel.R > WhiteThreshold && pixel.G > WhiteThreshold && pixel.B > WhiteThreshold);
     }
 
     private static double CalculateColorDistance(Rgba32 color1, Rgba32 color2)

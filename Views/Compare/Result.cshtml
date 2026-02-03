@@ -6,53 +6,70 @@
     var compareImageUrl = (string)ViewBag.CompareImageUrl;
 }
 
-<h1>Comparison Result - @Model.OrderNumber</h1>
-
-<div class="row">
-    <div class="col-md-10 offset-md-1">
-        <div class="card mb-4">
-            <div class="card-header">
-                <div class="d-flex justify-content-between">
-                    <span>Result</span>
-                    <span class="badge @(mode == "overlay" ? "bg-info" : "bg-warning")">@mode mode</span>
-                </div>
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Comparison Result</h1>
+                <p class="text-muted mb-0">@Model.OrderNumber</p>
             </div>
-            <div class="card-body text-center">
-                <div class="display-1 mb-3 @(progress >= 100 ? "text-success" : progress >= 50 ? "text-primary" : "text-warning")">
+            @if (mode == "overlay")
+            {
+                <span class="badge badge-overlay" style="font-size: 1rem; padding: 0.5rem 1rem;">Overlay Mode</span>
+            }
+            else
+            {
+                <span class="badge badge-diff" style="font-size: 1rem; padding: 0.5rem 1rem;">Diff Mode</span>
+            }
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body stat-card py-5">
+                <div class="stat-value @(progress >= 100 ? "text-success" : progress >= 50 ? "text-primary" : "text-warning")" style="font-size: 5rem;">
                     @progress%
                 </div>
-                <div class="progress progress-bar-custom mb-4" style="height: 40px;">
-                    <div class="progress-bar @(progress >= 100 ? "bg-success" : "bg-primary")"
-                         style="width: @progress%">
-                        @progress%
+                <div class="stat-label mb-4">Progress Calculated</div>
+
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="progress progress-lg">
+                            @if (progress >= 100)
+                            {
+                                <div class="progress-bar bg-success" style="width: @progress%">@progress%</div>
+                            }
+                            else
+                            {
+                                <div class="progress-bar" style="width: @progress%">@progress%</div>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row">
+        <div class="row g-4 mb-4">
             <div class="col-md-6">
-                <div class="card mb-4">
+                <div class="card h-100">
                     <div class="card-header">Base Image</div>
-                    <div class="card-body text-center">
-                        <img src="@Model.BaseImageUrl" class="img-fluid border" alt="Base" />
+                    <div class="card-body text-center p-4">
+                        <img src="@Model.BaseImageUrl" class="img-fluid rounded" alt="Base" />
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="card mb-4">
+                <div class="card h-100">
                     <div class="card-header">Compared Image</div>
-                    <div class="card-body text-center">
-                        <img src="@compareImageUrl" class="img-fluid border" alt="Compared" />
+                    <div class="card-body text-center p-4">
+                        <img src="@compareImageUrl" class="img-fluid rounded" alt="Compared" />
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="text-center">
-            <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-primary">View Order</a>
-            <a asp-action="Index" asp-route-orderId="@Model.Id" class="btn btn-warning">Compare Another</a>
-            <a asp-action="History" asp-route-orderId="@Model.Id" class="btn btn-info">View Timeline</a>
+        <div class="d-flex justify-content-center gap-2 flex-wrap">
+            <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-primary btn-lg">View Order</a>
+            <a asp-action="Index" asp-route-orderId="@Model.Id" class="btn btn-warning btn-lg">Compare Another</a>
+            <a asp-action="History" asp-route-orderId="@Model.Id" class="btn btn-info btn-lg">View Timeline</a>
         </div>
     </div>
 </div>

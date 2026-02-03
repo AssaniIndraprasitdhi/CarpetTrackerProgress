@@ -4,34 +4,40 @@
     var isOverlay = Model.ProgressMode == "overlay";
 }
 
-<h1>Compare - @Model.OrderNumber</h1>
-<p>Upload an image to compare against the base image using either mode.</p>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Compare Images</h1>
+        <p class="text-muted mb-0">@Model.OrderNumber • @Model.StandardWidth × @Model.StandardHeight pixels</p>
+    </div>
+    <div class="action-buttons">
+        <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Back to Order</a>
+    </div>
+</div>
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card mb-4">
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
             <div class="card-header">Base Image</div>
-            <div class="card-body text-center">
-                <img src="@Model.BaseImageUrl" class="img-fluid border" alt="Base Image" />
-                <p class="mt-2 text-muted">@Model.StandardWidth x @Model.StandardHeight pixels</p>
+            <div class="card-body text-center p-4">
+                <img src="@Model.BaseImageUrl" class="img-fluid rounded" alt="Base Image" />
             </div>
         </div>
     </div>
 
-    <div class="col-md-6">
+    <div class="col-lg-6">
         <div class="card mb-4">
             <div class="card-header">Upload for Comparison</div>
             <div class="card-body">
-                <form asp-action="Compare" method="post" enctype="multipart/form-data">
+                <form asp-action="Compare" method="post" enctype="multipart/form-data" data-loading="Comparing images...">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="orderId" value="@Model.Id" />
 
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="compareImage" class="form-label">Select Image</label>
                         <input type="file" class="form-control" id="compareImage" name="compareImage" accept="image/*" required />
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="mode" class="form-label">Comparison Mode</label>
                         <select class="form-select" id="mode" name="mode">
                             @if (isOverlay)
@@ -45,32 +51,52 @@
                                 <option value="upload_diff" selected>Color Diff (Distance &gt; 30)</option>
                             }
                         </select>
-                        <div class="form-text">
-                            <strong>Overlay:</strong> Counts pixels with alpha &gt; 10 as completed.<br />
-                            <strong>Color Diff:</strong> Counts pixels where color distance &gt; 30 as completed.
+                        <div class="form-text mt-2">
+                            <span class="badge badge-overlay me-1">Overlay</span> Counts pixels with alpha &gt; 10<br class="d-block mt-1" />
+                            <span class="badge badge-diff me-1">Diff</span> Counts pixels where color distance &gt; 30
                         </div>
                     </div>
 
-                    <div id="comparePreviewContainer" style="display: none;" class="mb-3">
+                    <div id="comparePreviewContainer" style="display: none;" class="mb-4">
                         <label class="form-label">Preview</label>
-                        <div class="text-center">
-                            <img id="comparePreview" class="img-fluid border" style="max-height: 200px;" />
+                        <div class="border rounded p-3 bg-light text-center">
+                            <img id="comparePreview" class="img-fluid rounded" style="max-height: 200px;" />
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-warning">Compare</button>
-                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning btn-lg">Compare Images</button>
+                        <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                    </div>
                 </form>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header">Current Status</div>
-            <div class="card-body">
-                <p><strong>Mode:</strong> <span class="badge @(isOverlay ? "bg-info" : "bg-warning")">@Model.ProgressMode</span></p>
-                <p><strong>Current Progress:</strong> @Model.CurrentProgress%</p>
-                <div class="progress progress-bar-custom">
-                    <div class="progress-bar" style="width: @Model.CurrentProgress%">@Model.CurrentProgress%</div>
+            <div class="card-header">Current Progress</div>
+            <div class="card-body stat-card">
+                <div class="stat-value @(Model.CurrentProgress >= 100 ? "text-success" : Model.CurrentProgress >= 50 ? "text-primary" : "text-warning")">
+                    @Model.CurrentProgress%
+                </div>
+                <div class="stat-label mb-3">
+                    @if (isOverlay)
+                    {
+                        <span class="badge badge-overlay">Overlay Mode</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-diff">Diff Mode</span>
+                    }
+                </div>
+                <div class="progress progress-lg">
+                    @if (Model.CurrentProgress >= 100)
+                    {
+                        <div class="progress-bar bg-success" style="width: @Model.CurrentProgress%">@Model.CurrentProgress%</div>
+                    }
+                    else
+                    {
+                        <div class="progress-bar" style="width: @Model.CurrentProgress%">@Model.CurrentProgress%</div>
+                    }
                 </div>
             </div>
         </div>
