@@ -21,11 +21,34 @@ public class ImageService
         var uploadsPath = Path.Combine(_environment.WebRootPath, "uploads", subFolder);
         Directory.CreateDirectory(uploadsPath);
 
-        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+        using var inputStream = file.OpenReadStream();
+        using var image = await Image.LoadAsync<Rgba32>(inputStream);
+
+        var fileName = $"{Guid.NewGuid()}.png";
         var filePath = Path.Combine(uploadsPath, fileName);
 
-        using var stream = new FileStream(filePath, FileMode.Create);
-        await file.CopyToAsync(stream);
+        await image.SaveAsPngAsync(filePath);
+
+        return $"/uploads/{subFolder}/{fileName}";
+    }
+
+    public async Task<string> SaveImageAsync(IFormFile file, string subFolder, int targetWidth, int targetHeight)
+    {
+        var uploadsPath = Path.Combine(_environment.WebRootPath, "uploads", subFolder);
+        Directory.CreateDirectory(uploadsPath);
+
+        using var inputStream = file.OpenReadStream();
+        using var image = await Image.LoadAsync<Rgba32>(inputStream);
+
+        if (image.Width != targetWidth || image.Height != targetHeight)
+        {
+            image.Mutate(x => x.Resize(targetWidth, targetHeight));
+        }
+
+        var fileName = $"{Guid.NewGuid()}.png";
+        var filePath = Path.Combine(uploadsPath, fileName);
+
+        await image.SaveAsPngAsync(filePath);
 
         return $"/uploads/{subFolder}/{fileName}";
     }
@@ -109,6 +132,32 @@ public class ImageService
         });
 
         return (baseImage.Width, baseImage.Height, totalPixels);
+    }
+
+    public async Task<string> CompositeImagesAsync(string baseImageUrl, string overlayImageUrl)
+    {
+        var basePath = GetPhysicalPath(baseImageUrl);
+        var overlayPath = GetPhysicalPath(overlayImageUrl);
+
+        using var baseImage = Image.Load<Rgba32>(basePath);
+        using var overlayImage = Image.Load<Rgba32>(overlayPath);
+
+        if (overlayImage.Width != baseImage.Width || overlayImage.Height != baseImage.Height)
+        {
+            overlayImage.Mutate(x => x.Resize(baseImage.Width, baseImage.Height));
+        }
+
+        baseImage.Mutate(x => x.DrawImage(overlayImage, 1f));
+
+        var mergedPath = Path.Combine(_environment.WebRootPath, "uploads", "merged");
+        Directory.CreateDirectory(mergedPath);
+
+        var mergedFileName = $"{Guid.NewGuid()}.png";
+        var mergedFilePath = Path.Combine(mergedPath, mergedFileName);
+
+        await baseImage.SaveAsPngAsync(mergedFilePath);
+
+        return $"/uploads/merged/{mergedFileName}";
     }
 
     public async Task<string> ResizeImageAsync(string imageUrl, int targetWidth, int targetHeight)

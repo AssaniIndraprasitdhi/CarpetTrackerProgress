@@ -45,7 +45,7 @@ public class ProgressController : Controller
             return RedirectToAction("Draw", new { orderId });
         }
 
-        var imageUrl = await _imageService.SaveImageAsync(overlayImage, "overlays");
+        var overlayUrl = await _imageService.SaveImageAsync(overlayImage, "overlays", order.StandardWidth, order.StandardHeight);
 
         ProgressResult result;
         if (!string.IsNullOrEmpty(order.MaskImageUrl))
@@ -53,7 +53,7 @@ public class ProgressController : Controller
             result = await _progressCalculationService.CalculateProgressWithMaskAsync(
                 order.MaskImageUrl,
                 order.BaseImageUrl!,
-                imageUrl,
+                overlayUrl,
                 "overlay",
                 order.StandardWidth,
                 order.StandardHeight);
@@ -62,13 +62,15 @@ public class ProgressController : Controller
         {
             result = await _progressCalculationService.CalculateProgressAsync(
                 order.BaseImageUrl!,
-                imageUrl,
+                overlayUrl,
                 "overlay",
                 order.StandardWidth,
                 order.StandardHeight);
         }
 
-        await _orderService.UpdateProgressAsync(order, result.ImageUrl, result.ProgressPercentage);
+        var mergedUrl = await _imageService.CompositeImagesAsync(order.BaseImageUrl!, result.ImageUrl);
+
+        await _orderService.UpdateProgressAsync(order, mergedUrl, result.ProgressPercentage, result.ImageUrl);
 
         return RedirectToAction("Result", new { orderId, progress = result.ProgressPercentage });
     }
@@ -99,7 +101,7 @@ public class ProgressController : Controller
             return RedirectToAction("Upload", new { orderId });
         }
 
-        var imageUrl = await _imageService.SaveImageAsync(uploadedImage, "uploads");
+        var imageUrl = await _imageService.SaveImageAsync(uploadedImage, "uploads", order.StandardWidth, order.StandardHeight);
 
         ProgressResult result;
         if (!string.IsNullOrEmpty(order.MaskImageUrl))

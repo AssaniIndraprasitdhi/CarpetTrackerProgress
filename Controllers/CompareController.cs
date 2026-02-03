@@ -50,7 +50,7 @@ public class CompareController : Controller
             mode = order.ProgressMode;
         }
 
-        var imageUrl = await _imageService.SaveImageAsync(compareImage, "compare");
+        var imageUrl = await _imageService.SaveImageAsync(compareImage, "compare", order.StandardWidth, order.StandardHeight);
 
         ProgressResult result;
         if (!string.IsNullOrEmpty(order.MaskImageUrl))
@@ -73,9 +73,22 @@ public class CompareController : Controller
                 order.StandardHeight);
         }
 
-        await _orderService.UpdateProgressAsync(order, result.ImageUrl, result.ProgressPercentage);
+        string displayUrl;
+        string? overlayUrl = null;
 
-        return RedirectToAction("Result", new { orderId, imageUrl = result.ImageUrl, progress = result.ProgressPercentage, mode });
+        if (mode == "overlay")
+        {
+            displayUrl = await _imageService.CompositeImagesAsync(order.BaseImageUrl!, result.ImageUrl);
+            overlayUrl = result.ImageUrl;
+        }
+        else
+        {
+            displayUrl = result.ImageUrl;
+        }
+
+        await _orderService.UpdateProgressAsync(order, displayUrl, result.ProgressPercentage, overlayUrl);
+
+        return RedirectToAction("Result", new { orderId, imageUrl = displayUrl, progress = result.ProgressPercentage, mode });
     }
 
     public async Task<IActionResult> Result(int orderId, string imageUrl, decimal progress, string mode)

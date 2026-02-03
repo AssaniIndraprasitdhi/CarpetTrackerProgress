@@ -61,9 +61,10 @@ public class OrderService
         return order;
     }
 
-    public async Task UpdateProgressAsync(Order order, string imageUrl, decimal progress)
+    public async Task UpdateProgressAsync(Order order, string imageUrl, decimal progress, string? overlayUrl = null)
     {
         order.CurrentImageUrl = imageUrl;
+        order.CurrentOverlayUrl = overlayUrl;
         order.CurrentProgress = progress;
         order.UpdatedAt = DateTime.UtcNow;
 
@@ -72,6 +73,7 @@ public class OrderService
             OrderId = order.Id,
             OrderNumber = order.OrderNumber,
             ImageUrl = imageUrl,
+            OverlayUrl = overlayUrl,
             ProgressPercentage = progress,
             RecordedAt = DateTime.UtcNow
         };

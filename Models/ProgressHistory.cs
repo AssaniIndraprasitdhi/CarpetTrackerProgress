@@ -20,6 +20,9 @@ public class ProgressHistory
     [Column("image_url")]
     public string? ImageUrl { get; set; }
 
+    [Column("overlay_url")]
+    public string? OverlayUrl { get; set; }
+
     [Column("progress_percentage", TypeName = "decimal(5,2)")]
     public decimal ProgressPercentage { get; set; }
 

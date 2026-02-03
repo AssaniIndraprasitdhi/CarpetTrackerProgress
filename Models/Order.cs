@@ -33,6 +33,9 @@ public class Order
     [Column("current_image_url")]
     public string? CurrentImageUrl { get; set; }
 
+    [Column("current_overlay_url")]
+    public string? CurrentOverlayUrl { get; set; }
+
     [Column("current_progress", TypeName = "decimal(5,2)")]
     public decimal CurrentProgress { get; set; }
 
