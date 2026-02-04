@@ -87,15 +87,12 @@ public class OrdersController : Controller
     {
         try
         {
-            Console.WriteLine($"Delete order requested: {id}");
             await _orderService.DeleteOrderAsync(id);
-            Console.WriteLine($"Delete order success: {id}");
             TempData["Success"] = "Order deleted successfully.";
             return RedirectToAction("Index");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"Delete order error: {ex.Message}");
             TempData["Error"] = "Failed to delete order.";
             return RedirectToAction("Details", new { id });
         }

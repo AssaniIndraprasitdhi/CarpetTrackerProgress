@@ -533,15 +533,14 @@
 
 <canvas id="maskCanvas" style="display: none;"></canvas>
 
-@section Scripts {
 <script>
 (function() {
     var drawingCanvas = document.getElementById('drawingCanvas');
-    var drawingCtx = drawingCanvas.getContext('2d');
+    var drawingCtx = drawingCanvas.getContext('2d', { willReadFrequently: true });
     var guideCanvas = document.getElementById('guideCanvas');
-    var guideCtx = guideCanvas.getContext('2d');
+    var guideCtx = guideCanvas.getContext('2d', { willReadFrequently: true });
     var maskCanvas = document.getElementById('maskCanvas');
-    var maskCtx = maskCanvas.getContext('2d');
+    var maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
     var canvasWrapper = document.getElementById('canvasWrapper');
 
     var width = @Model.StandardWidth;
@@ -687,6 +686,7 @@
     var lastY = 0;
     var history = [];
     var currentTool = 'pen';
+    var pencilOnly = false;
 
     function saveState() {
         if (history.length > 20) history.shift();
@@ -772,9 +772,28 @@
         return settings;
     }
 
-    function drawPoint(x, y) {
+    function getPressure(e) {
+        if (e && typeof e.pressure === "number" && e.pressure > 0) return e.pressure;
+        return 0.5;
+    }
+
+    function getDynamicBrushSize(e) {
+        var base = getScaledBrushSize();
+        if (currentTool === "pencil") return Math.max(1, Math.floor(base * 0.6));
+        if (currentTool === "eraser") return Math.max(1, Math.floor(base * 1.2));
+        var p = getPressure(e);
+        return Math.max(1, Math.round(base * (0.6 + p * 0.9)));
+    }
+
+    function shouldAcceptPointer(e) {
+        if (!pencilOnly) return true;
+        return e && e.pointerType === "pen";
+    }
+
+    function drawPoint(x, y, evt) {
         var settings = getToolSettings();
-        var halfBrush = settings.size / 2;
+        var dynamicSize = evt ? getDynamicBrushSize(evt) : settings.size;
+        var halfBrush = dynamicSize / 2;
 
         drawingCtx.save();
         drawingCtx.globalAlpha = settings.alpha;
@@ -786,11 +805,7 @@
                     var px = Math.floor(x + dx);
                     var py = Math.floor(y + dy);
                     if (isInWorkArea(px, py)) {
-                        if (currentTool === 'eraser') {
-                            drawingCtx.fillStyle = 'rgba(0,0,0,1)';
-                        } else {
-                            drawingCtx.fillStyle = getBrushColor();
-                        }
+                        drawingCtx.fillStyle = (currentTool === 'eraser') ? 'rgba(0,0,0,1)' : getBrushColor();
                         drawingCtx.fillRect(px, py, 1, 1);
                     }
                 }
@@ -800,22 +815,23 @@
         drawingCtx.restore();
     }
 
-    function drawLine(x1, y1, x2, y2) {
+    function drawLine(x1, y1, x2, y2, evt) {
         var dx = x2 - x1;
         var dy = y2 - y1;
-        var steps = Math.max(Math.abs(dx), Math.abs(dy));
+        var steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * 1.5);
         if (steps === 0) {
-            drawPoint(x1, y1);
+            drawPoint(x1, y1, evt);
             return;
         }
         var xInc = dx / steps;
         var yInc = dy / steps;
         for (var i = 0; i <= steps; i++) {
-            drawPoint(x1 + xInc * i, y1 + yInc * i);
+            drawPoint(x1 + xInc * i, y1 + yInc * i, evt);
         }
     }
 
     function handlePointerDown(e) {
+        if (!shouldAcceptPointer(e)) return;
         e.preventDefault();
         var pos = getPointerPos(e);
         if (!isInWorkArea(pos.x, pos.y)) return;
@@ -823,14 +839,15 @@
         isDrawing = true;
         lastX = pos.x;
         lastY = pos.y;
-        drawPoint(pos.x, pos.y);
+        drawPoint(pos.x, pos.y, e);
     }
 
     function handlePointerMove(e) {
         if (!isDrawing) return;
+        if (!shouldAcceptPointer(e)) return;
         e.preventDefault();
         var pos = getPointerPos(e);
-        drawLine(lastX, lastY, pos.x, pos.y);
+        drawLine(lastX, lastY, pos.x, pos.y, e);
         lastX = pos.x;
         lastY = pos.y;
     }
@@ -852,20 +869,13 @@
     btnClear.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        showConfirmModal({
-            title: 'Clear Drawing',
-            message: 'Clear all drawings? This cannot be undone.',
-            type: 'danger',
-            confirmText: 'Clear',
-            cancelText: 'Cancel',
-            onConfirm: function() {
-                saveState();
-                drawingCtx.clearRect(0, 0, width, height);
-                if (maskLoaded) {
-                    fillOutsideMask();
-                }
-            }
-        });
+
+        saveState();
+        drawingCtx.clearRect(0, 0, width, height);
+
+        if (maskLoaded) {
+            fillOutsideMask();
+        }
     });
 
     document.getElementById('btnUndo').addEventListener('click', function() {
@@ -959,4 +969,3 @@
     });
 })();
 </script>
-}

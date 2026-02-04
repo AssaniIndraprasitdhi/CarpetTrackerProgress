@@ -117,11 +117,17 @@ public class OrderService
 
     public async Task DeleteOrderAsync(int id)
     {
-        var order = await _context.Orders.FindAsync(id);
-        if (order != null)
-        {
-            _context.Orders.Remove(order);
-            await _context.SaveChangesAsync();
-        }
+        var order = await _context.Orders
+            .Include(o => o.ProgressHistories)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (order == null) return;
+
+        if (order.ProgressHistories != null && order.ProgressHistories.Count > 0)
+            _context.ProgressHistories.RemoveRange(order.ProgressHistories);
+
+        _context.Orders.Remove(order);
+        await _context.SaveChangesAsync();
     }
+
 }
