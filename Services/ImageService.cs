@@ -499,7 +499,7 @@ public class ImageService
 
     private static bool IsDrawnPixel(Rgba32 pixel)
     {
-        return !(pixel.R > WhiteThreshold && pixel.G > WhiteThreshold && pixel.B > WhiteThreshold);
+        return pixel.A > AlphaThreshold;
     }
 
     private static double CalculateColorDistance(Rgba32 color1, Rgba32 color2)

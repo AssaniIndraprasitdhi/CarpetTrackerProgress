@@ -94,7 +94,7 @@
                     <div class="card-body text-center p-4">
                         @if (!string.IsNullOrEmpty(Model.CurrentOverlayUrl))
                         {
-                            <div class="checkerboard-bg rounded">
+                            <div class="overlay-white-bg rounded">
                                 <img src="@Model.CurrentOverlayUrl" class="img-fluid rounded" alt="Current Overlay" />
                             </div>
                         }
@@ -155,7 +155,7 @@
                                 <td>
                                     @if (!string.IsNullOrEmpty(history.OverlayUrl))
                                     {
-                                        <div class="checkerboard-bg-sm rounded" style="display: inline-block;">
+                                        <div class="overlay-white-bg-sm rounded" style="display: inline-block;">
                                             <img src="@history.OverlayUrl" class="thumbnail" alt="Overlay" style="max-height: 50px;" />
                                         </div>
                                     }

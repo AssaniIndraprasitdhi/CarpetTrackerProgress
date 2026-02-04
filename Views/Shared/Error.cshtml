@@ -1,25 +1,41 @@
-﻿@model ErrorViewModel
+@model ErrorViewModel
 @{
     ViewData["Title"] = "Error";
 }
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.6;">⚠️</div>
+                <h1 class="text-danger" style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">Error</h1>
+                <p style="color: var(--gray-600); font-size: 1.0625rem; margin-bottom: 1.5rem;">An error occurred while processing your request.</p>
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
-    </p>
-}
+                @if (Model.ShowRequestId)
+                {
+                    <div style="background: var(--gray-100); border-radius: var(--radius); padding: 1rem; display: inline-block; margin-bottom: 1.5rem;">
+                        <span style="color: var(--gray-500); font-size: 0.8125rem; font-weight: 600;">Request ID:</span>
+                        <code style="color: var(--gray-700); font-size: 0.875rem; margin-left: 0.5rem;">@Model.RequestId</code>
+                    </div>
+                }
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+                <a asp-controller="Orders" asp-action="Index" class="btn btn-primary">Go to Orders</a>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">Development Mode</div>
+            <div class="card-body">
+                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.7; margin-bottom: 1rem;">
+                    Swapping to <strong style="color: var(--gray-800);">Development</strong> environment will display more detailed information about the error that occurred.
+                </p>
+                <p style="color: var(--gray-600); font-size: 0.9375rem; line-height: 1.7; margin: 0;">
+                    <strong style="color: var(--gray-800);">The Development environment shouldn't be enabled for deployed applications.</strong>
+                    It can result in displaying sensitive information from exceptions to end users.
+                    For local debugging, enable the <strong style="color: var(--gray-800);">Development</strong> environment by setting the <strong style="color: var(--gray-800);">ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong style="color: var(--gray-800);">Development</strong>
+                    and restarting the app.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

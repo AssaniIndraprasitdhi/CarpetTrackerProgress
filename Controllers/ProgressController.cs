@@ -68,6 +68,12 @@ public class ProgressController : Controller
                 order.StandardHeight);
         }
 
+        if (result.ProgressPercentage == 0 && !string.IsNullOrEmpty(order.CurrentOverlayUrl))
+        {
+            TempData["Warning"] = "No progress detected. Previous overlay preserved.";
+            return RedirectToAction("Result", new { orderId, progress = order.CurrentProgress });
+        }
+
         var mergedUrl = await _imageService.CompositeImagesAsync(order.BaseImageUrl!, result.ImageUrl);
 
         await _orderService.UpdateProgressAsync(order, mergedUrl, result.ProgressPercentage, result.ImageUrl);

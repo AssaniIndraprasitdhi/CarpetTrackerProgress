@@ -5,29 +5,440 @@
     var hasMask = !string.IsNullOrEmpty(Model.MaskImageUrl);
 }
 
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Draw Progress</h1>
-        <p class="text-muted mb-0">@Model.OrderNumber • @Model.StandardWidth × @Model.StandardHeight pixels</p>
-    </div>
-    <div class="action-buttons">
-        <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Back to Order</a>
-    </div>
-</div>
+<style>
+    .draw-page {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
 
-<div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header">Reference Image</div>
-            <div class="card-body text-center p-4" style="overflow: auto; background: #f1f5f9;">
-                <img src="@Model.BaseImageUrl" class="img-fluid rounded border" alt="Base Image" style="max-height: 500px;" />
+    .draw-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .draw-header-info h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        margin: 0 0 0.25rem 0;
+        letter-spacing: -0.025em;
+    }
+
+    .draw-header-info .meta {
+        font-size: 0.9375rem;
+        color: var(--gray-500);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .draw-header-info .meta .separator {
+        width: 4px;
+        height: 4px;
+        background: var(--gray-300);
+        border-radius: 50%;
+    }
+
+    .draw-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .draw-card {
+        background: #fff;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .draw-card-header {
+        padding: 1rem 1.5rem;
+        background: var(--gray-50);
+        border-bottom: 1px solid var(--gray-200);
+        font-weight: 600;
+        font-size: 0.8125rem;
+        color: var(--gray-500);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .draw-card-body {
+        padding: 1.5rem;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .reference-image-container {
+        background: var(--gray-100);
+        border-radius: var(--radius);
+        padding: 1rem;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 300px;
+        max-height: 55vh;
+    }
+
+    .reference-image-container img {
+        max-width: 100%;
+        max-height: 50vh;
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow);
+    }
+
+    .drawing-panel {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .toolbar-container {
+        padding: 0.875rem 1.25rem;
+        background: #fff;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .tools-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
+    }
+
+    .tool-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .tool-group .btn-group {
+        box-shadow: var(--shadow-xs);
+    }
+
+    .tool-group .btn-group .btn {
+        padding: 0.5rem 0.75rem;
+        border-radius: 0;
+    }
+
+    .tool-group .btn-group .btn:first-child {
+        border-radius: var(--radius) 0 0 var(--radius);
+    }
+
+    .tool-group .btn-group .btn:last-child {
+        border-radius: 0 var(--radius) var(--radius) 0;
+    }
+
+    .tool-group-size {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .tool-group-size .tool-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--gray-500);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .tool-group-size .form-range {
+        width: 100px;
+        cursor: pointer;
+    }
+
+    .tool-group-size .brush-size-value {
+        min-width: 24px;
+        text-align: center;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--gray-800);
+    }
+
+    .color-picker {
+        width: 38px;
+        height: 38px;
+        padding: 3px;
+        border: 2px solid var(--gray-300);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .color-picker:hover {
+        border-color: var(--gray-400);
+    }
+
+    .icon-btn {
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius);
+        transition: all 0.15s ease;
+    }
+
+    .drawing-area {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: var(--gray-100);
+        padding: 1.5rem;
+        min-height: 300px;
+        max-height: 55vh;
+        flex: 1;
+    }
+
+    .canvas-wrapper {
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+        max-height: calc(55vh - 3rem);
+    }
+
+    .canvas-wrapper canvas {
+        display: block;
+        max-width: 100%;
+        max-height: calc(55vh - 3rem);
+        height: auto;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-md);
+    }
+
+    .canvas-wrapper .guide-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    .canvas-wrapper .drawing-canvas {
+        position: relative;
+        z-index: 1;
+        touch-action: none;
+        cursor: crosshair;
+        background: #fff;
+        image-rendering: pixelated;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .progress-card-body {
+        padding: 1.5rem;
+    }
+
+    .progress-display {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .progress-value {
+        font-size: 3rem;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -0.03em;
+    }
+
+    .progress-value.complete {
+        color: var(--success);
+    }
+
+    .progress-value.high {
+        color: var(--primary);
+    }
+
+    .progress-value.medium {
+        color: var(--warning);
+    }
+
+    .progress-value.low {
+        color: var(--danger);
+    }
+
+    .progress-bar-wrapper {
+        flex: 1;
+    }
+
+    .progress-bar-track {
+        height: 10px;
+        background: var(--gray-200);
+        border-radius: 5px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        border-radius: 5px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-bar-fill.complete {
+        background: linear-gradient(90deg, var(--success) 0%, #4ade80 100%);
+    }
+
+    .progress-bar-fill.high {
+        background: linear-gradient(90deg, var(--primary) 0%, #818cf8 100%);
+    }
+
+    .progress-bar-fill.medium {
+        background: linear-gradient(90deg, var(--warning) 0%, #fbbf24 100%);
+    }
+
+    .progress-bar-fill.low {
+        background: linear-gradient(90deg, var(--danger) 0%, #f87171 100%);
+    }
+
+    .loaded-notice {
+        margin-top: 1rem;
+        padding: 0.875rem 1rem;
+        background: var(--success-light);
+        border: 1px solid #bbf7d0;
+        border-radius: var(--radius);
+        color: #166534;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+    }
+
+    .loaded-notice svg {
+        flex-shrink: 0;
+        color: var(--success);
+    }
+
+    .instructions-card-body {
+        padding: 1.5rem;
+    }
+
+    .instructions-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+    }
+
+    .instructions-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        font-size: 0.9375rem;
+        color: var(--gray-600);
+        line-height: 1.5;
+    }
+
+    .instructions-list li::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        background: var(--primary);
+        border-radius: 50%;
+        margin-top: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .instructions-list strong {
+        color: var(--gray-800);
+        font-weight: 600;
+    }
+
+    @@media (max-width: 991.98px) {
+        .draw-grid,
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 575.98px) {
+        .draw-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .tools-bar {
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .tool-group {
+            flex-shrink: 0;
+        }
+
+        .tool-group-size {
+            width: 100%;
+            order: 10;
+            justify-content: flex-end;
+            margin-top: 0.25rem;
+            flex: none;
+        }
+
+        .tool-group-size .form-range {
+            flex: 1;
+            max-width: 150px;
+        }
+
+        .progress-display {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .progress-bar-wrapper {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="draw-page">
+    <div class="draw-header">
+        <div class="draw-header-info">
+            <h1>Draw Progress</h1>
+            <div class="meta">
+                <span>@Model.OrderNumber</span>
+                <span class="separator"></span>
+                <span>@Model.StandardWidth × @Model.StandardHeight px</span>
             </div>
         </div>
+        <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                <path d="m15 18-6-6 6-6"/>
+            </svg>
+            Back to Order
+        </a>
     </div>
 
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header card-header-light">
+    <div class="draw-grid">
+        <div class="draw-card">
+            <div class="draw-card-header">Reference Image</div>
+            <div class="draw-card-body">
+                <div class="reference-image-container">
+                    <img src="@Model.BaseImageUrl" alt="Base Image" />
+                </div>
+            </div>
+        </div>
+
+        <div class="draw-card drawing-panel">
+            <div class="toolbar-container">
                 <div class="tools-bar">
                     <div class="tool-group">
                         <div class="btn-group" role="group">
@@ -45,7 +456,7 @@
                     <div class="tool-group tool-group-size">
                         <span class="tool-label">Size:</span>
                         <input type="range" id="brushSize" min="1" max="50" value="10" class="form-range" />
-                        <span id="brushSizeValue" class="fw-bold brush-size-value">10</span>px
+                        <span id="brushSizeValue" class="fw-bold brush-size-value">10</span>
                     </div>
                     <div class="tool-group" id="colorGroup">
                         <input type="color" id="brushColor" value="#ff0000" class="color-picker" title="Brush Color" />
@@ -63,53 +474,47 @@
                     </div>
                 </div>
             </div>
-            <div class="card-body text-center p-4" style="overflow: auto; background: #f1f5f9;">
-                <div class="canvas-container" id="canvasContainer">
-                    <canvas id="drawingCanvas" class="canvas-touch"></canvas>
-                    <canvas id="outlineCanvas" class="canvas-overlay canvas-touch" style="pointer-events: none;"></canvas>
+            <div class="drawing-area">
+                <div class="canvas-wrapper" id="canvasWrapper">
+                    <canvas id="drawingCanvas" class="drawing-canvas"></canvas>
+                    <canvas id="guideCanvas" class="guide-canvas"></canvas>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="row g-4 mt-2">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">Current Progress</div>
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="stat-value @(Model.CurrentProgress >= 100 ? "text-success" : Model.CurrentProgress >= 50 ? "text-primary" : "text-warning")" style="font-size: 2.5rem;">
-                        @Model.CurrentProgress%
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="progress progress-lg">
-                            @if (Model.CurrentProgress >= 100)
-                            {
-                                <div class="progress-bar bg-success" style="width: @Model.CurrentProgress%">@Model.CurrentProgress%</div>
-                            }
-                            else
-                            {
-                                <div class="progress-bar" style="width: @Model.CurrentProgress%">@Model.CurrentProgress%</div>
-                            }
+    <div class="info-grid">
+        <div class="draw-card">
+            <div class="draw-card-header">Current Progress</div>
+            <div class="progress-card-body">
+                @{
+                    var progressClass = Model.CurrentProgress >= 100 ? "complete" : Model.CurrentProgress >= 50 ? "high" : Model.CurrentProgress >= 25 ? "medium" : "low";
+                }
+                <div class="progress-display">
+                    <div class="progress-value @progressClass">@Model.CurrentProgress%</div>
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill @progressClass" style="width: @Model.CurrentProgress%;"></div>
                         </div>
                     </div>
                 </div>
                 @if (hasExistingOverlay)
                 {
-                    <div class="alert alert-success mb-0 mt-3">
-                        <small>Previous drawing loaded. Continue from where you left off.</small>
+                    <div class="loaded-notice">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <span>Previous drawing loaded. Continue from where you left off.</span>
                     </div>
                 }
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">Instructions</div>
-            <div class="card-body">
-                <ul class="instructions-list mb-0">
+        <div class="draw-card">
+            <div class="draw-card-header">Instructions</div>
+            <div class="instructions-card-body">
+                <ul class="instructions-list">
                     <li>Use <strong>Pen</strong> for solid strokes or <strong>Pencil</strong> for light marking</li>
                     <li>Use <strong>Eraser</strong> to remove mistakes</li>
                     <li>Drawing is restricted to inside the carpet outline</li>
@@ -117,12 +522,13 @@
                 </ul>
             </div>
         </div>
-        <form id="submitForm" asp-action="SubmitDraw" method="post" enctype="multipart/form-data" style="display: none;">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="orderId" value="@Model.Id" />
-            <input type="file" name="overlayImage" id="overlayImageInput" />
-        </form>
     </div>
+
+    <form id="submitForm" asp-action="SubmitDraw" method="post" enctype="multipart/form-data" style="display: none;">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="orderId" value="@Model.Id" />
+        <input type="file" name="overlayImage" id="overlayImageInput" />
+    </form>
 </div>
 
 <canvas id="maskCanvas" style="display: none;"></canvas>
@@ -130,28 +536,40 @@
 @section Scripts {
 <script>
 (function() {
-    var canvas = document.getElementById('drawingCanvas');
-    var ctx = canvas.getContext('2d');
-    var outlineCanvas = document.getElementById('outlineCanvas');
-    var outlineCtx = outlineCanvas.getContext('2d');
+    var drawingCanvas = document.getElementById('drawingCanvas');
+    var drawingCtx = drawingCanvas.getContext('2d');
+    var guideCanvas = document.getElementById('guideCanvas');
+    var guideCtx = guideCanvas.getContext('2d');
     var maskCanvas = document.getElementById('maskCanvas');
     var maskCtx = maskCanvas.getContext('2d');
+    var canvasWrapper = document.getElementById('canvasWrapper');
 
     var width = @Model.StandardWidth;
     var height = @Model.StandardHeight;
 
-    canvas.width = width;
-    canvas.height = height;
-    outlineCanvas.width = width;
-    outlineCanvas.height = height;
+    drawingCanvas.width = width;
+    drawingCanvas.height = height;
+    guideCanvas.width = width;
+    guideCanvas.height = height;
     maskCanvas.width = width;
     maskCanvas.height = height;
 
     var maskData = null;
     var maskLoaded = false;
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
+    function getDisplayScale() {
+        var rect = drawingCanvas.getBoundingClientRect();
+        return rect.width / width;
+    }
+
+    function syncGuideCanvasSize() {
+        var rect = drawingCanvas.getBoundingClientRect();
+        guideCanvas.style.width = rect.width + 'px';
+        guideCanvas.style.height = rect.height + 'px';
+    }
+
+    window.addEventListener('resize', syncGuideCanvasSize);
+    setTimeout(syncGuideCanvasSize, 100);
 
     @if (hasMask)
     {
@@ -162,8 +580,9 @@
         maskCtx.drawImage(maskImg, 0, 0, width, height);
         maskData = maskCtx.getImageData(0, 0, width, height);
         maskLoaded = true;
-        drawOutline();
+        drawGuideOutline();
         fillOutsideMask();
+        syncGuideCanvasSize();
     };
     maskImg.src = '@Model.MaskImageUrl';
         </text>
@@ -178,11 +597,9 @@
         return maskData.data[idx] > 128;
     }
 
-    function drawOutline() {
+    function drawGuideOutline() {
         if (!maskData) return;
-        outlineCtx.clearRect(0, 0, width, height);
-        outlineCtx.strokeStyle = '#1e293b';
-        outlineCtx.lineWidth = 2;
+        guideCtx.clearRect(0, 0, width, height);
 
         var outlinePixels = [];
 
@@ -215,15 +632,15 @@
             }
         }
 
-        outlineCtx.fillStyle = '#1e293b';
+        guideCtx.fillStyle = 'rgba(30, 41, 59, 0.8)';
         for (var i = 0; i < outlinePixels.length; i++) {
-            outlineCtx.fillRect(outlinePixels[i].x, outlinePixels[i].y, 1, 1);
+            guideCtx.fillRect(outlinePixels[i].x, outlinePixels[i].y, 1, 1);
         }
     }
 
     function fillOutsideMask() {
         if (!maskData) return;
-        var imageData = ctx.getImageData(0, 0, width, height);
+        var imageData = drawingCtx.getImageData(0, 0, width, height);
         var data = imageData.data;
 
         for (var y = 0; y < height; y++) {
@@ -237,23 +654,33 @@
                 }
             }
         }
-        ctx.putImageData(imageData, 0, 0);
+        drawingCtx.putImageData(imageData, 0, 0);
     }
 
     @if (hasExistingOverlay)
-    {
-        <text>
-    var existingOverlay = new Image();
-    existingOverlay.crossOrigin = 'anonymous';
-    existingOverlay.onload = function() {
-        ctx.drawImage(existingOverlay, 0, 0, width, height);
-        if (maskLoaded) {
-            fillOutsideMask();
-        }
-    };
-    existingOverlay.src = '@Model.CurrentOverlayUrl';
-        </text>
-    }
+{
+@:    var existingOverlay = new Image();
+@:    existingOverlay.crossOrigin = 'anonymous';
+@:    existingOverlay.onload = function() {
+@:        drawingCtx.drawImage(existingOverlay, 0, 0, width, height);
+@:        var imageData = drawingCtx.getImageData(0, 0, width, height);
+@:        var data = imageData.data;
+@:        for (var y = 0; y < height; y++) {
+@:            for (var x = 0; x < width; x++) {
+@:                var idx = (y * width + x) * 4;
+@:                var inWorkArea = !maskLoaded || !maskData || maskData.data[idx] > 128;
+@:                if (inWorkArea && data[idx] > 240 && data[idx + 1] > 240 && data[idx + 2] > 240) {
+@:                    data[idx + 3] = 0;
+@:                }
+@:            }
+@:        }
+@:        drawingCtx.putImageData(imageData, 0, 0);
+@:        if (maskLoaded) {
+@:            fillOutsideMask();
+@:        }
+@:    };
+@:    existingOverlay.src = '@Model.CurrentOverlayUrl';
+}
 
     var isDrawing = false;
     var lastX = 0;
@@ -263,13 +690,19 @@
 
     function saveState() {
         if (history.length > 20) history.shift();
-        history.push(canvas.toDataURL());
+        history.push(drawingCanvas.toDataURL());
     }
 
     setTimeout(function() { saveState(); }, 500);
 
     function getBrushSize() {
         return parseInt(document.getElementById('brushSize').value);
+    }
+
+    function getScaledBrushSize() {
+        var baseSize = getBrushSize();
+        var scale = getDisplayScale();
+        return Math.max(1, Math.round(baseSize / scale));
     }
 
     function getBrushColor() {
@@ -308,9 +741,9 @@
     });
 
     function getPointerPos(e) {
-        var rect = canvas.getBoundingClientRect();
-        var scaleX = canvas.width / rect.width;
-        var scaleY = canvas.height / rect.height;
+        var rect = drawingCanvas.getBoundingClientRect();
+        var scaleX = drawingCanvas.width / rect.width;
+        var scaleY = drawingCanvas.height / rect.height;
         var clientX = e.clientX;
         var clientY = e.clientY;
         if (e.touches && e.touches.length > 0) {
@@ -324,7 +757,7 @@
     }
 
     function getToolSettings() {
-        var baseSize = getBrushSize();
+        var baseSize = getScaledBrushSize();
         var settings = {
             size: baseSize,
             alpha: 1.0,
@@ -343,9 +776,9 @@
         var settings = getToolSettings();
         var halfBrush = settings.size / 2;
 
-        ctx.save();
-        ctx.globalAlpha = settings.alpha;
-        ctx.globalCompositeOperation = settings.composite;
+        drawingCtx.save();
+        drawingCtx.globalAlpha = settings.alpha;
+        drawingCtx.globalCompositeOperation = settings.composite;
 
         for (var dy = -halfBrush; dy <= halfBrush; dy++) {
             for (var dx = -halfBrush; dx <= halfBrush; dx++) {
@@ -354,17 +787,17 @@
                     var py = Math.floor(y + dy);
                     if (isInWorkArea(px, py)) {
                         if (currentTool === 'eraser') {
-                            ctx.fillStyle = 'rgba(0,0,0,1)';
+                            drawingCtx.fillStyle = 'rgba(0,0,0,1)';
                         } else {
-                            ctx.fillStyle = getBrushColor();
+                            drawingCtx.fillStyle = getBrushColor();
                         }
-                        ctx.fillRect(px, py, 1, 1);
+                        drawingCtx.fillRect(px, py, 1, 1);
                     }
                 }
             }
         }
 
-        ctx.restore();
+        drawingCtx.restore();
     }
 
     function drawLine(x1, y1, x2, y2) {
@@ -406,21 +839,19 @@
         isDrawing = false;
     }
 
-    canvas.addEventListener('pointerdown', handlePointerDown);
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('pointerup', handlePointerUp);
-    canvas.addEventListener('pointerleave', handlePointerUp);
-    canvas.addEventListener('pointercancel', handlePointerUp);
+    drawingCanvas.addEventListener('pointerdown', handlePointerDown);
+    drawingCanvas.addEventListener('pointermove', handlePointerMove);
+    drawingCanvas.addEventListener('pointerup', handlePointerUp);
+    drawingCanvas.addEventListener('pointerleave', handlePointerUp);
+    drawingCanvas.addEventListener('pointercancel', handlePointerUp);
 
-    canvas.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
-    canvas.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+    drawingCanvas.addEventListener('touchstart', function(e) { e.preventDefault(); }, { passive: false });
+    drawingCanvas.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
 
     var btnClear = document.getElementById('btnClear');
-    console.log('btnClear element:', btnClear);
     btnClear.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Clear button clicked');
         showConfirmModal({
             title: 'Clear Drawing',
             message: 'Clear all drawings? This cannot be undone.',
@@ -428,14 +859,11 @@
             confirmText: 'Clear',
             cancelText: 'Cancel',
             onConfirm: function() {
-                console.log('Clear confirmed, clearing canvas');
                 saveState();
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, width, height);
+                drawingCtx.clearRect(0, 0, width, height);
                 if (maskLoaded) {
                     fillOutsideMask();
                 }
-                console.log('Canvas cleared');
             }
         });
     });
@@ -446,8 +874,8 @@
             var imgData = history[history.length - 1];
             var img = new Image();
             img.onload = function() {
-                ctx.clearRect(0, 0, width, height);
-                ctx.drawImage(img, 0, 0);
+                drawingCtx.clearRect(0, 0, width, height);
+                drawingCtx.drawImage(img, 0, 0);
             };
             img.src = imgData;
         }
@@ -456,36 +884,53 @@
     var isSaving = false;
     var saveBtn = document.getElementById('btnSubmit');
 
-    saveBtn.addEventListener('click', function() {
-        if (isSaving) return;
+    function hasDrawnPixels() {
+        var imageData = drawingCtx.getImageData(0, 0, width, height);
+        var data = imageData.data;
+        for (var y = 0; y < height; y++) {
+            for (var x = 0; x < width; x++) {
+                var idx = (y * width + x) * 4;
+                var inWorkArea = !maskLoaded || !maskData || maskData.data[idx] > 128;
+                if (inWorkArea) {
+                    var a = data[idx + 3];
+                    if (a > 10) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    function doSave() {
         isSaving = true;
         saveBtn.disabled = true;
         saveBtn.classList.add('saving');
         saveBtn.innerHTML = '<svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
         showLoading('Calculating progress...');
+
         var exportCanvas = document.createElement('canvas');
         exportCanvas.width = width;
         exportCanvas.height = height;
         var exportCtx = exportCanvas.getContext('2d');
-        exportCtx.fillStyle = '#ffffff';
-        exportCtx.fillRect(0, 0, width, height);
-        exportCtx.drawImage(canvas, 0, 0);
-        if (maskLoaded && maskData) {
-            var imageData = exportCtx.getImageData(0, 0, width, height);
-            var data = imageData.data;
-            for (var y = 0; y < height; y++) {
-                for (var x = 0; x < width; x++) {
-                    var idx = (y * width + x) * 4;
-                    if (maskData.data[idx] <= 128) {
-                        data[idx] = 240;
-                        data[idx + 1] = 240;
-                        data[idx + 2] = 240;
-                        data[idx + 3] = 255;
-                    }
+        exportCtx.drawImage(drawingCanvas, 0, 0);
+
+        var imageData = exportCtx.getImageData(0, 0, width, height);
+        var data = imageData.data;
+        for (var y = 0; y < height; y++) {
+            for (var x = 0; x < width; x++) {
+                var idx = (y * width + x) * 4;
+                var inWorkArea = !maskLoaded || !maskData || maskData.data[idx] > 128;
+                if (!inWorkArea) {
+                    data[idx] = 240;
+                    data[idx + 1] = 240;
+                    data[idx + 2] = 240;
+                    data[idx + 3] = 255;
                 }
             }
-            exportCtx.putImageData(imageData, 0, 0);
         }
+        exportCtx.putImageData(imageData, 0, 0);
+
         exportCanvas.toBlob(function(blob) {
             var file = new File([blob], 'overlay.png', { type: 'image/png' });
             var dataTransfer = new DataTransfer();
@@ -493,6 +938,24 @@
             document.getElementById('overlayImageInput').files = dataTransfer.files;
             document.getElementById('submitForm').submit();
         }, 'image/png');
+    }
+
+    saveBtn.addEventListener('click', function() {
+        if (isSaving) return;
+
+        if (!hasDrawnPixels()) {
+            showConfirmModal({
+                title: 'No Drawing Detected',
+                message: 'The canvas appears to be empty. Save anyway? If you have existing saved progress, it will be preserved.',
+                type: 'warning',
+                confirmText: 'Save Anyway',
+                cancelText: 'Cancel',
+                onConfirm: doSave
+            });
+            return;
+        }
+
+        doSave();
     });
 })();
 </script>

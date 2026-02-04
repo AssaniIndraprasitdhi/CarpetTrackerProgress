@@ -7,10 +7,13 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Progress Timeline</h1>
-        <p class="text-muted mb-0">@order.OrderNumber • @Model.Count records</p>
+        <p style="color: var(--gray-500); font-size: 0.9375rem; margin: 0.25rem 0 0 0;">@order.OrderNumber • @Model.Count records</p>
     </div>
     <div class="action-buttons">
-        <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="btn btn-outline-secondary">Back to Order</a>
+        <a asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="btn btn-outline-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.375rem;"><path d="m15 18-6-6 6-6"/></svg>
+            Back to Order
+        </a>
     </div>
 </div>
 
@@ -38,15 +41,15 @@
 
         <div class="card">
             <div class="card-header">Order Details</div>
-            <div class="card-body">
+            <div class="card-body" style="padding: 1.25rem;">
                 <table class="table table-borderless mb-0">
                     <tr>
-                        <td class="text-muted">Order</td>
-                        <td class="fw-bold">@order.OrderNumber</td>
+                        <td style="color: var(--gray-500); padding: 0.5rem 0.5rem 0.5rem 0; width: 40%;">Order</td>
+                        <td style="font-weight: 600; color: var(--gray-800); padding: 0.5rem 0;">@order.OrderNumber</td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Dimensions</td>
-                        <td>@order.StandardWidth × @order.StandardHeight</td>
+                        <td style="color: var(--gray-500); padding: 0.5rem 0.5rem 0.5rem 0;">Dimensions</td>
+                        <td style="color: var(--gray-700); padding: 0.5rem 0;">@order.StandardWidth × @order.StandardHeight</td>
                     </tr>
                 </table>
             </div>
@@ -56,8 +59,10 @@
     <div class="col-lg-8">
         <div class="card h-100">
             <div class="card-header">Base Image</div>
-            <div class="card-body text-center p-4">
-                <img src="@order.BaseImageUrl" class="img-fluid rounded" style="max-height: 250px;" alt="Base" />
+            <div class="card-body text-center" style="padding: 2rem;">
+                <div style="background: var(--gray-100); border-radius: var(--radius); padding: 1rem; display: inline-block;">
+                    <img src="@order.BaseImageUrl" class="img-fluid rounded" style="max-height: 250px;" alt="Base" />
+                </div>
             </div>
         </div>
     </div>
@@ -66,15 +71,15 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Timeline</span>
-        <span class="badge bg-light text-dark">@Model.Count records</span>
+        <span style="background: var(--gray-100); color: var(--gray-600); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8125rem; font-weight: 500;">@Model.Count records</span>
     </div>
     <div class="card-body p-0">
         @if (Model.Count == 0)
         {
             <div class="empty-state">
                 <div class="empty-state-icon">📊</div>
-                <h5>No Records Yet</h5>
-                <p class="text-muted mb-3">Start tracking progress to build your timeline.</p>
+                <h5 style="font-weight: 600; color: var(--gray-800); margin-bottom: 0.5rem;">No Records Yet</h5>
+                <p style="color: var(--gray-500); margin-bottom: 1.25rem;">Start tracking progress to build your timeline.</p>
                 <a asp-controller="Progress" asp-action="Draw" asp-route-orderId="@order.Id" class="btn btn-success">Start Drawing</a>
             </div>
         }
@@ -100,13 +105,13 @@
                         {
                             var change = previousProgress.HasValue ? record.ProgressPercentage - previousProgress.Value : 0;
                             <tr>
-                                <td class="text-muted">@index</td>
+                                <td style="color: var(--gray-500);">@index</td>
                                 <td>@record.RecordedAt.ToString("MMM dd, yyyy HH:mm")</td>
                                 <td>
-                                    <span class="fw-bold">@record.ProgressPercentage%</span>
+                                    <span style="font-weight: 600;">@record.ProgressPercentage%</span>
                                     @if (previousProgress.HasValue && change != 0)
                                     {
-                                        <span class="@(change > 0 ? "text-success" : "text-danger") small ms-1">
+                                        <span class="@(change > 0 ? "text-success" : "text-danger")" style="font-size: 0.8125rem; margin-left: 0.375rem;">
                                             (@(change > 0 ? "+" : "")@change%)
                                         </span>
                                     }
@@ -142,7 +147,7 @@
     </div>
 </div>
 
-<div class="d-flex gap-2 mt-4">
+<div class="d-flex gap-3 mt-4">
     <a asp-controller="Progress" asp-action="Draw" asp-route-orderId="@order.Id" class="btn btn-success">Draw Progress</a>
     <a asp-controller="Progress" asp-action="Upload" asp-route-orderId="@order.Id" class="btn btn-info">Upload Progress</a>
     <a asp-controller="Compare" asp-action="Index" asp-route-orderId="@order.Id" class="btn btn-warning">Compare</a>
